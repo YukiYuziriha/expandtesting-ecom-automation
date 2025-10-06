@@ -1,42 +1,52 @@
 name: ci
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # ← Critical: Playwright does NOT support ubuntu-24.04 yet
     strategy:
       matrix:
         browser: [chromium, firefox]
-    steps:
-      - uses: actions/checkout@v4
+      fail-fast: false
 
-      - uses: actions/setup-python@v5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install Python deps
-        run: pip install -r requirements.txt
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Install Playwright browsers
-        uses: microsoft/playwright-github-action@v1
-        with:
-          browsers: ${{ matrix.browser }}
+      - name: Install Playwright browsers + system deps
+        run: python -m playwright install --with-deps ${{ matrix.browser }}
 
-      - name: Lint
+      - name: Lint and format check
         run: |
           ruff check .
           ruff format --check .
 
-      - name: Type check (non-fatal)
-        run: mypy --check-untyped-defs --ignore-missing-imports . || echo "mypy skipped"
+      - name: Type check (non-fatal for now)
+        run: mypy --check-untyped-defs --ignore-missing-imports . || echo "mypy skipped (no typed code yet)"
 
-      - name: Run tests
-        run: pytest tests/ -v --browser ${{ matrix.browser }} --video on --tracing on
+      - name: Run E2E tests
+        run: |
+          pytest tests/ -v --browser ${{ matrix.browser }} --video on --tracing on
 
-      - name: Upload artifacts on failure
+      - name: Upload failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: failure-${{ matrix.browser }}
+          name: failure-artifacts-${{ matrix.browser }}
           path: |
             test-results/
             videos/
