@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+.env.local
+
+# Playwright
+test-results/
+videos/
+screenshots/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store

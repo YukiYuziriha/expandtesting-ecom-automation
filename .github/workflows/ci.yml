@@ -1,0 +1,30 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: [chromium, firefox]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: python -m playwright install --with-deps
+      - run: ruff check . && ruff format --check .
+      - run: mypy .
+      - run: pytest -v --browser ${{ matrix.browser }} --video on --tracing on
+      - if: failure()
+        run: |
+          zip -r artifacts.zip test-results/ videos/ || true
+          echo "Artifacts ready for upload"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-failure-artifacts
+          path: |
+            test-results/
+            videos/
+            screenshots/
