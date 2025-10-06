@@ -13,41 +13,30 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-
       - name: Install Python deps
         run: pip install -r requirements.txt
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
+      - name: Install Playwright browsers
+        uses: microsoft/playwright-github-action@v1
         with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('**/requirements.txt') }}
+          browsers: ${{ matrix.browser }}
 
-      - name: Install Playwright browsers (with retry)
-        run: |
-          python -m playwright install --with-deps ${{ matrix.browser }}
-        timeout-minutes: 10
-
-      - name: Lint & Type Check
+      - name: Lint
         run: |
           ruff check .
           ruff format --check .
-          mypy --check-untyped-defs --ignore-missing-imports . || echo "mypy skipped (no typed code yet)"
 
-      - name: Run E2E Tests
-        run: |
-          pytest tests/ -v --browser ${{ matrix.browser }} --video on --tracing on
+      - name: Type check (non-fatal)
+        run: mypy --check-untyped-defs --ignore-missing-imports . || echo "mypy skipped"
 
-      - name: Upload failure artifacts
+      - name: Run tests
+        run: pytest tests/ -v --browser ${{ matrix.browser }} --video on --tracing on
+
+      - name: Upload artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-failure-${{ matrix.browser }}
+          name: failure-${{ matrix.browser }}
           path: |
             test-results/
             videos/
