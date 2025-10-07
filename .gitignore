@@ -17,3 +17,5 @@ screenshots/
 *.swp
 .DS_Store
 *.code-workspace
+
+tests/smoke/test_code.py
