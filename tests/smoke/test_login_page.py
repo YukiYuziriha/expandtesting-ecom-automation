@@ -30,5 +30,6 @@ def test_login_page_correct_creds(page: Page, test_users: dict) -> None:
 
     user = test_users["profile1"]
     login_page.login(user["email"], user["password"])
+    page.wait_for_url("**/profile")
     expect(page.get_by_role("heading", name="Profile")).to_be_visible()
     expect(page.get_by_role("heading", name="My Orders")).to_be_visible()

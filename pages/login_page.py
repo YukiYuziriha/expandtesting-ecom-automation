@@ -22,8 +22,6 @@ class LoginPage:
         self.email_input.fill(email)
         self.password_input.fill(password)
         self.sign_in_button.click()
-        # Wait for navigation or next page to load
-        self.page.wait_for_load_state("networkidle")
 
     @property
     def missing_credentials_error(self):
