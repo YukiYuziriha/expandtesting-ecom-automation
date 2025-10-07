@@ -16,3 +16,4 @@ screenshots/
 .idea/
 *.swp
 .DS_Store
+*.code-workspace
