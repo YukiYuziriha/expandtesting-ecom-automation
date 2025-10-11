@@ -19,7 +19,7 @@ class HomePage(BasePage):
         self.search_button = search_form.locator("button[type='submit']")
 
     def load(self) -> None:
-        self.page.goto(self.URL)
+        self._safe_goto(self.URL)
 
     def search_for(self, query: str) -> None:
         self.search_input.fill(query)

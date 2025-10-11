@@ -17,7 +17,7 @@ class LoginPage(BasePage):
 
     def load(self) -> None:
         """Navigate to the login page."""
-        self.page.goto(self.URL)
+        self._safe_goto(self.URL)
 
     def login(self, email: str, password: str) -> None:
         """Perform login action with given credentials."""

@@ -10,6 +10,11 @@ class BasePage:
         self.user_dropdown_toggle = page.locator("#navbarDropdown")
         self.logout_link = page.locator("#logout")
 
+    def _safe_goto(self, url: str) -> None:
+        """Navigate and auto-dismiss ads."""
+        self.page.goto(url)
+        self.dismiss_any_ads()
+
     def dismiss_any_ads(self, timeout: float = 2000) -> None:
         """
         Attempt to dismiss intersitial ads if present.
