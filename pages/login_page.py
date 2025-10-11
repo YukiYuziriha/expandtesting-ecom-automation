@@ -1,14 +1,16 @@
 # pages/login_page.py
 from playwright.sync_api import Page
+from pages.base_page import BasePage
 
 
-class LoginPage:
+class LoginPage(BasePage):
     """Page Object for the ExpandTesting Bookstore Sign-In page."""
 
     URL = "https://practice.expandtesting.com/bookstore/user/signin"
 
     def __init__(self, page: Page) -> None:
-        self.page = page
+        super().__init__(page)
+
         self.email_input = page.get_by_placeholder("Enter your email...")
         self.password_input = page.get_by_placeholder("Enter your password...")
         self.sign_in_button = page.get_by_role("button", name="Sign In")
