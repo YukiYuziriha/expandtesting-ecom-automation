@@ -34,6 +34,12 @@ class BasePage:
         except TimeoutError:
             pass
 
+    def is_logged_in(self) -> bool:
+        """
+        Returns True if user dropdown is present (logged in), False otherwise.
+        """
+        return self.user_dropdown_toggle.is_visible(timeout=1000)
+
     def logout(self) -> None:
         """Log out the current user via the global navbar."""
         self.user_dropdown_toggle.click()
