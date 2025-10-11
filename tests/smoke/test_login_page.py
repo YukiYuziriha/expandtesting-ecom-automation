@@ -17,11 +17,11 @@ def test_login_page_invalid_creds(page: Page) -> None:
 
     # Test empty creds
     login_page.login("", "")
-    expect(login_page.missing_credentials_error).to_be_visible()
+    expect(login_page.credentials_error_message).to_be_visible()
 
     # Test Invalid creds
     login_page.login("dawsa", "awd")
-    expect(login_page.invalid_email_error).to_be_visible()
+    expect(login_page.credentials_error_message).to_be_visible()
 
 
 def test_login_page_correct_creds(page: Page, test_users: dict) -> None:

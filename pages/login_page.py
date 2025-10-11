@@ -11,9 +11,14 @@ class LoginPage(BasePage):
     def __init__(self, page: Page) -> None:
         super().__init__(page)
 
-        self.email_input = page.get_by_placeholder("Enter your email...")
-        self.password_input = page.get_by_placeholder("Enter your password...")
-        self.sign_in_button = page.get_by_role("button", name="Sign In")
+        login_form = (
+            self.page.locator("form")
+            .filter(has=self.page.locator("#email"))
+            .filter(has=self.page.locator("#password"))
+        )
+        self.email_input = login_form.locator("#email")
+        self.password_input = login_form.locator("#password")
+        self.sign_in_button = login_form.locator("button[type='submit']")
 
     def load(self) -> None:
         """Navigate to the login page."""
@@ -26,9 +31,10 @@ class LoginPage(BasePage):
         self.sign_in_button.click()
 
     @property
-    def missing_credentials_error(self):
-        return self.page.get_by_text("Missing credentials")
-
-    @property
-    def invalid_email_error(self):
-        return self.page.get_by_text("Invalid email address")
+    def credentials_error_message(self):
+        """
+        Locator for the universal error banner (id='flash')
+        Use expect(...).to_be_visible() to check if any error is shown.
+        Use .text_content() or inner_text() to read the message.
+        """
+        return self.page.locator("#flash.alert.alert-danger")
