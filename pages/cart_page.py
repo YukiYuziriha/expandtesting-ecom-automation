@@ -19,6 +19,7 @@ class CartPage(BasePage):
         self._safe_goto(self.URL)
 
     def is_cart_empty(self) -> bool:
+        self.dismiss_any_ads()
         return self.page.locator("a[href^='/bookstore/remove/']").count() == 0
 
     def remove_item_by_index(self, index: int = 0) -> None:
