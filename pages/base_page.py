@@ -1,5 +1,5 @@
 # pages/base_page.py
-from playwright.sync_api import Page
+from playwright.sync_api import Page, TimeoutError
 
 
 class BasePage:
@@ -18,22 +18,29 @@ class BasePage:
 
     def dismiss_any_ads(self) -> None:
         """
-        Attempt to dismiss intersitial ads if present.
-        Runs quickly and silently if no ad is found.
+        Finds the correct ad iframe from multiple candidates and clicks its close button.
         """
-        try:
-            ad_container = self.page.locator("#card:has(.creative)")
-            if not ad_container.is_visible(timeout=1000):
-                return
+        # Get all potential ad iframes on the page.
+        ad_iframes = self.page.locator("iframe[title='Advertisement']").all()
 
-            close_button = ad_container.get_by_role("button", name="Close ad").or_(
-                ad_container.locator("#dismiss-button")
-            )
-            if close_button.is_visible(timeout=500):
-                close_button.click(timeout=500)
-                ad_container.wait_for(state="hidden", timeout=2000)
-        except TimeoutError:
-            pass
+        for frame_locator in ad_iframes:
+            try:
+                # For each frame, try to find and click the close button inside it.
+                # Use a very short timeout because we only care about the one that is currently visible.
+                close_button = (
+                    frame_locator.frame_locator(":scope")
+                    .get_by_label("Close ad")
+                    .or_(
+                        frame_locator.frame_locator(":scope").locator("#dismiss-button")
+                    )
+                )
+                close_button.click(timeout=250)
+
+                # If the click was successful, the ad is closed, and we can stop looking.
+                return
+            except (TimeoutError, Exception):
+                # If this frame didn't contain the visible close button, ignore the error and try the next one.
+                continue
 
     def is_logged_in(self) -> bool:
         """

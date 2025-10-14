@@ -1,6 +1,7 @@
 # pages/cart_page.py
 from playwright.sync_api import Page
 from pages.base_page import BasePage
+from urllib.parse import urljoin
 
 
 class CartPage(BasePage):
@@ -23,7 +24,13 @@ class CartPage(BasePage):
 
     def remove_item_by_index(self, index: int = 0) -> None:
         delete_link = self.page.locator("a[href^='/bookstore/remove/']").nth(index)
-        delete_link.click()
+
+        href = delete_link.get_attribute("href")
+        if href:
+            # Correctly construct the full URL before navigating.
+            full_url = urljoin(self.page.url, href)
+            self.page.goto(full_url)
+
         self.page.wait_for_load_state("domcontentloaded")
         self.dismiss_any_ads()
 
