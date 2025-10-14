@@ -3,7 +3,7 @@ from playwright.sync_api import Page
 
 
 class BasePage:
-    """Base page with shared UI elements (e.g., navbar, logout)."""
+    """Base page with shared UI elements and robust ad handling."""
 
     def __init__(self, page: Page) -> None:
         self.page = page
@@ -12,44 +12,78 @@ class BasePage:
         self.cart_badge = page.locator("a[href='/bookstore/cart']")
 
     def _safe_goto(self, url: str) -> None:
-        """Navigate and auto-dismiss ads."""
+        """Navigate with ad blocking and proper waiting."""
+        # Block ads before navigation
+        self._block_ads()
         self.page.goto(url)
+        self.page.wait_for_load_state("networkidle")
         self.dismiss_any_ads()
 
-    def dismiss_any_ads(self) -> None:
-        """
-        Attempt to dismiss intersitial ads if present.
-        Runs quickly and silently if no ad is found.
-        """
-        try:
-            ad_container = self.page.locator("#card:has(.creative)")
-            if not ad_container.is_visible(timeout=1000):
-                return
+    def _block_ads(self) -> None:
+        """Block common ad domains at network level."""
+        ad_patterns = [
+            "*googleads*",
+            "*googlesyndication*",
+            "*doubleclick*",
+            "*adsbygoogle*",
+        ]
 
-            close_button = ad_container.get_by_role("button", name="Close ad").or_(
-                ad_container.locator("#dismiss-button")
-            )
-            if close_button.is_visible(timeout=500):
-                close_button.click(timeout=500)
-                ad_container.wait_for(state="hidden", timeout=2000)
-        except TimeoutError:
+        def block_route(route):
+            if any(pattern in route.request.url for pattern in ad_patterns):
+                route.abort()
+            else:
+                route.continue_()
+
+        self.page.route("**/*", block_route)
+
+    def dismiss_any_ads(self) -> None:
+        """Robust ad dismissal with multiple strategies."""
+        try:
+            # Strategy 1: Close buttons
+            close_selectors = [
+                "button[aria-label*='close' i]",
+                "button[class*='close' i]",
+                "#dismiss-button",
+                "[data-testid*='close']",
+            ]
+
+            for selector in close_selectors:
+                if self.page.locator(selector).is_visible(timeout=1000):
+                    self.page.locator(selector).click()
+                    self.page.wait_for_timeout(500)  # Brief pause
+                    break
+
+            # Strategy 2: Hide ad containers via JS
+            hide_script = """
+                document.querySelectorAll('ins.adsbygoogle, .adsbygoogle, [class*="ad-"]')
+                    .forEach(el => el.style.display = 'none');
+            """
+            self.page.evaluate(hide_script)
+
+        except Exception:
+            # Silently continue if no ads found
             pass
 
     def is_logged_in(self) -> bool:
-        """
-        Returns True if user dropdown is present (logged in), False otherwise.
-        """
-        return self.user_dropdown_toggle.is_visible(timeout=1000)
+        """Check if user is logged in with proper waiting."""
+        return self.user_dropdown_toggle.is_visible(timeout=5000)
 
     def logout(self) -> None:
-        """Log out the current user via the global navbar."""
+        """Log out with proper waiting."""
         self.user_dropdown_toggle.click()
         self.logout_link.click()
+        self.page.wait_for_load_state("networkidle")
 
     def read_cart_count(self) -> int:
-        """Returns the numeric value in the cart badge (0 if empty)."""
-        text = self.cart_badge.text_content()
-        if text is None:
+        """Safely read cart count with error handling."""
+        try:
+            text = self.cart_badge.text_content(timeout=2000)
+            return int(text.strip()) if text and text.strip().isdigit() else 0
+        except Exception:
             return 0
-        clean_text = text.strip()
-        return int(clean_text) if text and clean_text.isdigit() else 0
+
+    def wait_for_element(self, locator, timeout=10000):
+        """Wait for element to be visible and stable."""
+        element = self.page.locator(locator)
+        element.wait_for(state="visible", timeout=timeout)
+        return element
