@@ -9,13 +9,14 @@ class BasePage:
         self.page = page
         self.user_dropdown_toggle = page.locator("#navbarDropdown")
         self.logout_link = page.locator("#logout")
+        self.cart_badge = page.locator("a[href='/bookstore/cart']")
 
     def _safe_goto(self, url: str) -> None:
         """Navigate and auto-dismiss ads."""
         self.page.goto(url)
         self.dismiss_any_ads()
 
-    def dismiss_any_ads(self, timeout: float = 2000) -> None:
+    def dismiss_any_ads(self) -> None:
         """
         Attempt to dismiss intersitial ads if present.
         Runs quickly and silently if no ad is found.
@@ -44,3 +45,11 @@ class BasePage:
         """Log out the current user via the global navbar."""
         self.user_dropdown_toggle.click()
         self.logout_link.click()
+
+    def read_cart_count(self) -> int:
+        """Returns the numeric value in the cart badge (0 if empty)."""
+        text = self.cart_badge.text_content()
+        if text is None:
+            return 0
+        clean_text = text.strip()
+        return int(clean_text) if text and clean_text.isdigit() else 0
