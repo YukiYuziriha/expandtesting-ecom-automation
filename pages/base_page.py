@@ -23,7 +23,7 @@ class BasePage:
         """
         try:
             ad_container = self.page.locator("#card:has(.creative)")
-            if not ad_container.is_visible(timeout=500):
+            if not ad_container.is_visible(timeout=1000):
                 return
 
             close_button = ad_container.get_by_role("button", name="Close ad").or_(
