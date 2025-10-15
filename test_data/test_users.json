@@ -1,6 +1,16 @@
 {
   "profile1": {
     "email": "lolggwp228@gmail.com",
-    "password": "password123"
+    "password": "password123",
+    "billing": {
+      "name": "Test User",
+      "address": "123 Test Street, Test City"
+    },
+    "payment": {
+      "card_number": "4242424242424242",
+      "exp_month": 12,
+      "exp_year": 2030,
+      "cvc": "123"
+    }
   }
 }

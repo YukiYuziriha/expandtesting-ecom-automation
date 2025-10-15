@@ -18,29 +18,22 @@ class BasePage:
 
     def dismiss_any_ads(self) -> None:
         """
-        Finds the correct ad iframe from multiple candidates and clicks its close button.
+        Attempt to dismiss interstitial ads ONLY if they appear as DOM overlays
+        (not inside iframes). This avoids accidental ad clicks.
         """
-        # Get all potential ad iframes on the page.
-        ad_iframes = self.page.locator("iframe[title='Advertisement']").all()
-
-        for frame_locator in ad_iframes:
-            try:
-                # For each frame, try to find and click the close button inside it.
-                # Use a very short timeout because we only care about the one that is currently visible.
-                close_button = (
-                    frame_locator.frame_locator(":scope")
-                    .get_by_label("Close ad")
-                    .or_(
-                        frame_locator.frame_locator(":scope").locator("#dismiss-button")
-                    )
+        try:
+            # Look for ad container in MAIN page DOM (not inside iframes)
+            ad_container = self.page.locator("#card:has(.creative)")
+            if ad_container.is_visible(timeout=500):
+                # Try to find close button in main document
+                close_btn = self.page.get_by_label("Close ad").or_(
+                    self.page.locator("#dismiss-button")
                 )
-                close_button.click(timeout=250)
-
-                # If the click was successful, the ad is closed, and we can stop looking.
-                return
-            except (TimeoutError, Exception):
-                # If this frame didn't contain the visible close button, ignore the error and try the next one.
-                continue
+                if close_btn.is_visible(timeout=500):
+                    close_btn.click(timeout=1000)
+                    ad_container.wait_for(state="hidden", timeout=2000)
+        except TimeoutError:
+            pass
 
     def is_logged_in(self) -> bool:
         """
