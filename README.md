@@ -1,9 +1,4 @@
 
------
-
-### **Copy-Paste This Into Your `README.md`**
-
-````markdown
 # End-to-End E-Commerce Automation with Observability
 
 ### One-Sentence Summary
