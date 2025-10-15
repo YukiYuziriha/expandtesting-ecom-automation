@@ -2,11 +2,17 @@
 import pytest
 import json
 import re
-from playwright.sync_api import Page, Route
+from pathlib import Path
+from typing import Iterator
+from filelock import FileLock
+
+from playwright.sync_api import Page, Route, Browser
 
 from pages.login_page import LoginPage
 from pages.base_page import BasePage
+from pages.profile_page import ProfilePage
 
+AUTH_FILE = Path(".auth/storage_state.json")
 AD_DOMAINS = [
     "enshrouded.com",
     "googleads.g.doubleclick.net",
@@ -23,9 +29,7 @@ def handle_route(route: Route):
 
 @pytest.fixture
 def page(page: Page):
-    """
-    Override the default Playwright page fixture to block ads.
-    """
+    """Override the default Playwright page fixture to block ads."""
     page.route("**/*", handle_route)
     yield page
 
@@ -37,16 +41,47 @@ def test_users() -> dict:
         return json.load(f)
 
 
-@pytest.fixture()
-def logged_in_page(page: Page, test_users: dict) -> BasePage:
+@pytest.fixture(scope="session")
+def auth_file(browser: Browser, test_users: dict, worker_id: str) -> Path:
     """
-    Returns a BasePage in a logged-in state.
-    Waits for post-login redirect to ensure stable state.
+    Session-scoped fixture to log in once and save state.
+    Handles parallel execution with filelock.
     """
-    user = test_users["profile1"]
-    login_page = LoginPage(page)
-    login_page.load()
-    login_page.login(user["email"], user["password"])
+    if worker_id == "master":
+        if AUTH_FILE.is_file():
+            AUTH_FILE.unlink()
 
-    page.wait_for_url("**/profile", timeout=10000)
-    return BasePage(page)
+    lock_path = AUTH_FILE.with_suffix(".lock")
+    with FileLock(lock_path):
+        if AUTH_FILE.is_file():
+            return AUTH_FILE
+
+        AUTH_FILE.parent.mkdir(exist_ok=True)
+        page = browser.new_page()
+
+        user = test_users["profile1"]
+        login_page = LoginPage(page)
+        login_page.load()
+        login_page.login(user["email"], user["password"])
+        page.wait_for_url("**/profile", timeout=10000)
+
+        page.context.storage_state(path=AUTH_FILE)
+        page.close()
+    return AUTH_FILE
+
+
+@pytest.fixture()
+def logged_in_page(browser: Browser, auth_file: Path) -> Iterator[BasePage]:
+    """
+    Returns a BasePage instance from a new, pre-authenticated
+    browser context. The page is navigated to the profile page
+    to ensure it is in a valid, ready-to-use state.
+    """
+    context = browser.new_context(storage_state=auth_file)
+    page = context.new_page()
+
+    profile_page = ProfilePage(page)
+    profile_page.load()
+
+    yield profile_page
+    context.close()
