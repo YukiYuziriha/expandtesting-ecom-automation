@@ -16,17 +16,20 @@ def test_authenticated_purchase_journey(logged_in_page, test_users) -> None:
     home_page = HomePage(page)
     home_page.load()
     home_page.search_for("Dev")
+    home_page.wait_for_search_results()
 
-    # Step 2: Add first book to cart
+    # Step 2: Add first book to cart and wait for badge update
     home_page.add_book_to_cart_by_index(0)
-    page.wait_for_load_state("domcontentloaded")
+    from playwright.sync_api import expect
+
+    expect(home_page.cart_badge).to_have_text("1")
 
     # Step 3: Go to cart and proceed to checkout
     cart_page = CartPage(page)
     cart_page.load()
     cart_page.proceed_to_checkout()
 
-    # Step 4: Fill and submit chechout form
+    # Step 4: Fill and submit checkout form
     user = test_users["profile1"]
     checkout_page = CheckoutPage(page)
     checkout_page.fill_and_submit(
