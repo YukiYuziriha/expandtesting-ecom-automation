@@ -85,6 +85,3 @@ pytest tests/ -v --browser firefox
 ## 📺 Live Demo
 
 *[A live demo is not currently available. The test is fully observable via CI artifacts on failure.]*
-
-```
-```
