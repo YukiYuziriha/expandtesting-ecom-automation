@@ -22,10 +22,8 @@ class BasePage:
         (not inside iframes). This avoids accidental ad clicks.
         """
         try:
-            # Look for ad container in MAIN page DOM (not inside iframes)
             ad_container = self.page.locator("#card:has(.creative)")
             if ad_container.is_visible(timeout=500):
-                # Try to find close button in main document
                 close_btn = self.page.get_by_label("Close ad").or_(
                     self.page.locator("#dismiss-button")
                 )
