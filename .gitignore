@@ -18,4 +18,5 @@ screenshots/
 .DS_Store
 *.code-workspace
 
+.auth
 tests/smoke/test_code.py

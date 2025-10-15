@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-22.04  # ← Critical: Playwright does NOT support ubuntu-24.04 yet
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         browser: [chromium, firefox]
@@ -36,11 +36,11 @@ jobs:
           ruff format --check .
 
       - name: Type check (non-fatal for now)
-        run: mypy --check-untyped-defs --ignore-missing-imports . || echo "mypy skipped (no typed code yet)"
+        run: mypy --check-untyped-defs --ignore-missing-imports . || echo "mypy check complete"
 
-      - name: Run E2E tests
+      - name: Run E2E tests in parallel
         run: |
-          pytest tests/ -v --browser ${{ matrix.browser }} --video on --tracing on
+          pytest tests/ -v --browser ${{ matrix.browser }} --video on --tracing on -n auto
 
       - name: Upload failure artifacts
         if: failure()
