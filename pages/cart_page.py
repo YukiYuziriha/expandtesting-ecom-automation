@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 class CartPage(BasePage):
     """Page Object for the ExpandTesting Bookstore Cart page."""
 
-    URL = "https://practice.expandtesting.com/bookstore/cart"
+    URL = "/bookstore/cart"
 
     def __init__(self, page: Page) -> None:
         super().__init__(page)

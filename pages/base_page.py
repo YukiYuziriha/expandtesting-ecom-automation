@@ -1,5 +1,6 @@
 # pages/base_page.py
 from playwright.sync_api import Page, TimeoutError
+from config import BASE_URL
 
 
 class BasePage:
@@ -13,7 +14,8 @@ class BasePage:
 
     def _safe_goto(self, url: str) -> None:
         """Navigate and auto-dismiss ads."""
-        self.page.goto(url)
+        full_url = f"{BASE_URL}{url}"
+        self.page.goto(full_url)
         self.dismiss_any_ads()
 
     def dismiss_any_ads(self) -> None:

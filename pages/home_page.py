@@ -6,7 +6,7 @@ from pages.base_page import BasePage
 class HomePage(BasePage):
     """Page Object for the ExpandTesting Bookstore Home page."""
 
-    URL = "https://practice.expandtesting.com/bookstore"
+    URL = "/bookstore"
 
     def __init__(self, page: Page) -> None:
         super().__init__(page)
