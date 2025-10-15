@@ -42,11 +42,15 @@ def test_users() -> dict:
 
 
 @pytest.fixture(scope="session")
-def auth_file(browser: Browser, test_users: dict, worker_id: str) -> Path:
+def auth_file(
+    browser: Browser, test_users: dict, request: pytest.FixtureRequest
+) -> Path:
     """
     Session-scoped fixture to log in once and save state.
-    Handles parallel execution with filelock.
+    Handles both sequential and parallel execution.
     """
+    worker_id = getattr(request.config, "workerinput", {}).get("workerid", "master")
+
     if worker_id == "master":
         if AUTH_FILE.is_file():
             AUTH_FILE.unlink()
