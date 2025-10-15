@@ -47,30 +47,26 @@ def auth_file(
 ) -> Path:
     """
     Session-scoped fixture to log in once and save state.
-    Handles both sequential and parallel execution.
+    Reuses existing state if available. Safe for parallel execution.
     """
-    worker_id = getattr(request.config, "workerinput", {}).get("workerid", "master")
-
-    if worker_id == "master":
-        if AUTH_FILE.is_file():
-            AUTH_FILE.unlink()
-
+    AUTH_FILE.parent.mkdir(exist_ok=True)
     lock_path = AUTH_FILE.with_suffix(".lock")
+
     with FileLock(lock_path):
         if AUTH_FILE.is_file():
+            # Reuse existing auth state — no login needed
             return AUTH_FILE
 
-        AUTH_FILE.parent.mkdir(exist_ok=True)
+        # Otherwise, log in and save state
         page = browser.new_page()
-
         user = test_users["profile1"]
         login_page = LoginPage(page)
         login_page.load()
         login_page.login(user["email"], user["password"])
         page.wait_for_url("**/profile", timeout=10000)
-
         page.context.storage_state(path=AUTH_FILE)
         page.close()
+
     return AUTH_FILE
 
 
