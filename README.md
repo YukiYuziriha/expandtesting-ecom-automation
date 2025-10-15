@@ -84,4 +84,6 @@ pytest tests/ -v --browser firefox
 
 ## 📺 Live Demo
 
-*[A live demo is not currently available. The test is fully observable via CI artifacts on failure.]*
+[![Watch the demo](https://img.youtube.com/vi/YlflQdfF60c/0.jpg)](https://youtu.be/YlflQdfF60c)
+
+A 20-second walkthrough of the authenticated purchase journey running locally with `--headed` mode.
