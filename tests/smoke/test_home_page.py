@@ -17,6 +17,4 @@ def test_first_book_to_cart_updates_badge(page: Page) -> None:
     assert home_page.read_cart_count() == 0
 
     home_page.add_book_to_cart_by_index(0)
-    page.wait_for_load_state("domcontentloaded")
-
-    assert home_page.read_cart_count() == 1
+    expect(home_page.cart_badge).to_have_text("1")

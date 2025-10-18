@@ -31,9 +31,7 @@ class CartPage(BasePage):
             full_url = urljoin(self.page.url, href)
             self.page.goto(full_url)
 
-        self.page.wait_for_load_state("domcontentloaded")
         self.dismiss_any_ads()
 
     def proceed_to_checkout(self) -> None:
         self.checkout_button.click()
-        self.page.wait_for_load_state("domcontentloaded")

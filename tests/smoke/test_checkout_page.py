@@ -16,8 +16,7 @@ def test_checkout_smoke(logged_in_page: BasePage, test_users: dict) -> None:
     home_page = HomePage(page)
     home_page.load()
     home_page.add_book_to_cart_by_index(0)
-    page.wait_for_load_state("domcontentloaded")
-    assert home_page.read_cart_count() == 1
+    expect(home_page.cart_badge).to_have_text("1")
 
     cart_page = CartPage(page)
     cart_page.load()
