@@ -3,6 +3,7 @@ from pages.home_page import HomePage
 from pages.cart_page import CartPage
 from pages.checkout_page import CheckoutPage
 from pages.profile_page import ProfilePage
+from playwright.sync_api import expect
 
 
 def test_authenticated_purchase_journey(logged_in_page, test_users) -> None:
@@ -20,7 +21,6 @@ def test_authenticated_purchase_journey(logged_in_page, test_users) -> None:
 
     # Step 2: Add first book to cart and wait for badge update
     home_page.add_book_to_cart_by_index(0)
-    from playwright.sync_api import expect
 
     expect(home_page.cart_badge).to_have_text("1")
 

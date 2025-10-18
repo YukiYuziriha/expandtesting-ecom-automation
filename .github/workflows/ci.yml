@@ -37,10 +37,14 @@ jobs:
 
       - name: Type check (non-fatal for now)
         run: mypy --check-untyped-defs --ignore-missing-imports . || echo "mypy check complete"
-
+      
+      - name: Create test data
+        run: |
+          echo '${{ secrets.TEST_USERS_JSON }}' > test_data/test_users.json
+          
       - name: Run E2E tests in parallel
         run: |
-          pytest tests/ -v --browser ${{ matrix.browser }} --video on --tracing on -n auto
+          pytest tests/ -v --browser ${{ matrix.browser }} --video on --tracing on -n auto --randomly-seed=123
 
       - name: Upload failure artifacts
         if: failure()

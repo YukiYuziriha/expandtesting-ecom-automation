@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 venv/
 .env.local
+.secrets.baseline
 
 # Playwright
 test-results/
@@ -21,3 +22,4 @@ AGENTS.md
 
 .auth
 tests/smoke/test_code.py
+test_data/test_users.json
