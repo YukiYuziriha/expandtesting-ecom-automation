@@ -53,7 +53,7 @@ This isn't just a collection of test scripts; it's a demonstration of a professi
 ### **2. Installation**
 ```bash
 # 1. Clone the repository
-git clone [https://github.com/YOUR_USERNAME/expandtesting-ecom-automation.git](https://github.com/YOUR_USERNAME/expandtesting-ecom-automation.git)
+git clone [https://https://github.com/YukiYuziriha/expandtesting-ecom-automation/tree/refactor-pom](https://github.com/YukiYuziriha/expandtesting-ecom-automation/tree/refactor-pom)
 cd expandtesting-ecom-automation
 
 # 2. Create and activate a virtual environment

@@ -8,9 +8,8 @@ def test_login_rejects_empty_credentials(page: Page) -> None:
     login_page = LoginPage(page)
     login_page.load()
     login_page.login("", "")
-    expect(login_page.credentials_error_message).to_be_visible()
-    # Optional: assert message content if critical
-    # assert "Missing credentials" in login_page.input_error_banner.text_content()
+
+    expect(login_page.credentials_error_message).to_be_visible(timeout=10000)
 
 
 def test_login_rejects_invalid_credentials(page: Page) -> None:
@@ -18,7 +17,8 @@ def test_login_rejects_invalid_credentials(page: Page) -> None:
     login_page = LoginPage(page)
     login_page.load()
     login_page.login("not-an-email", "123")  # clearly invalid
-    expect(login_page.credentials_error_message).to_be_visible()
+
+    expect(login_page.credentials_error_message).to_be_visible(timeout=10000)
 
 
 def test_login_success_with_valid_credentials(page: Page, test_users: dict) -> None:

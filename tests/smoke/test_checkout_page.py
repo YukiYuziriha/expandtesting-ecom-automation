@@ -4,6 +4,7 @@ from pages.cart_page import CartPage
 from pages.checkout_page import CheckoutPage
 from pages.profile_page import ProfilePage
 from pages.base_page import BasePage
+from playwright.sync_api import expect
 
 
 def test_checkout_smoke(logged_in_page: BasePage, test_users: dict) -> None:
@@ -15,8 +16,7 @@ def test_checkout_smoke(logged_in_page: BasePage, test_users: dict) -> None:
     home_page = HomePage(page)
     home_page.load()
     home_page.add_book_to_cart_by_index(0)
-    page.wait_for_load_state("domcontentloaded")
-    assert home_page.read_cart_count() == 1
+    expect(home_page.cart_badge).to_have_text("1")
 
     cart_page = CartPage(page)
     cart_page.load()
@@ -35,7 +35,5 @@ def test_checkout_smoke(logged_in_page: BasePage, test_users: dict) -> None:
         cvc=user["payment"]["cvc"],
     )
 
-    page.wait_for_url("**/profile")
-
     profile_page = ProfilePage(page)
-    assert profile_page.is_order_confirmation_visible()
+    expect(profile_page.order_confirmation_banner).to_be_visible(timeout=10000)

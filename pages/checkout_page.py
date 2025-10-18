@@ -56,4 +56,3 @@ class CheckoutPage(BasePage):
 
         # Submit form
         self.purchase_button.click()
-        self.page.wait_for_load_state("domcontentloaded")
