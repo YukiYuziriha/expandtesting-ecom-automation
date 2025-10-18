@@ -19,6 +19,7 @@ screenshots/
 .DS_Store
 *.code-workspace
 AGENTS.md
+.cursor/
 
 .auth
 tests/smoke/test_code.py
