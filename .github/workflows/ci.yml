@@ -36,7 +36,7 @@ jobs:
           ruff format --check .
 
       - name: Type check (non-fatal for now)
-        run: mypy --check-untyped-defs --ignore-missing-imports . || echo "mypy check complete"
+        run: mypy --check-untyped-defs --ignore-missing-imports . 
       
       - name: Create test data
         run: |
