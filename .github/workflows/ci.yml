@@ -45,7 +45,7 @@ jobs:
 
       - name: Run E2E tests in parallel
         run: |
-          pytest tests/ -v --browser ${{ matrix.browser }} --video on --tracing on -n auto --randomly-seed=123
+          pytest tests/ -v --browser ${{ matrix.browser }} --video on --tracing on -n auto --randomly-seed=${{ github.run_number }}
 
       - name: Upload failure artifacts
         if: failure()
