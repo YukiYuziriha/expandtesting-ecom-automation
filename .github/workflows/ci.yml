@@ -40,8 +40,9 @@ jobs:
       
       - name: Create test data
         run: |
+          mkdir -p test_data
           echo '${{ secrets.TEST_USERS_JSON }}' > test_data/test_users.json
-          
+
       - name: Run E2E tests in parallel
         run: |
           pytest tests/ -v --browser ${{ matrix.browser }} --video on --tracing on -n auto --randomly-seed=123
