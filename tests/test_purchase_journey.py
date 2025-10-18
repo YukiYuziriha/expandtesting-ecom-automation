@@ -44,6 +44,4 @@ def test_authenticated_purchase_journey(logged_in_page, test_users) -> None:
 
     page.wait_for_url("**/profile")
     profile_page = ProfilePage(page)
-    assert (
-        profile_page.is_order_confirmation_visible()
-    ), "Order confirmation banner not shown"
+    expect(profile_page.order_confirmation_banner).to_be_visible()

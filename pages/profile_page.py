@@ -16,7 +16,3 @@ class ProfilePage(BasePage):
     def load(self) -> None:
         """Navigate to the profile page."""
         self._safe_goto(self.URL)
-
-    def is_order_confirmation_visible(self) -> bool:
-        """Check if the order confirmation banner is visible."""
-        return self.order_confirmation_banner.is_visible(timeout=5000)

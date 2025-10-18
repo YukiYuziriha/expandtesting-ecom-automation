@@ -4,6 +4,7 @@ from pages.cart_page import CartPage
 from pages.checkout_page import CheckoutPage
 from pages.profile_page import ProfilePage
 from pages.base_page import BasePage
+from playwright.sync_api import expect
 
 
 def test_checkout_smoke(logged_in_page: BasePage, test_users: dict) -> None:
@@ -38,4 +39,4 @@ def test_checkout_smoke(logged_in_page: BasePage, test_users: dict) -> None:
     page.wait_for_url("**/profile")
 
     profile_page = ProfilePage(page)
-    assert profile_page.is_order_confirmation_visible()
+    expect(profile_page.order_confirmation_banner).to_be_visible()
