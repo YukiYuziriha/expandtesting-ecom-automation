@@ -25,3 +25,4 @@ AGENTS.md
 tests/smoke/test_code.py
 test_data/test_users.json
 .pre-commit-cache/
+.beads/
