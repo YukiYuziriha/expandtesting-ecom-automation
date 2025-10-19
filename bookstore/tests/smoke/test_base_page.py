@@ -1,5 +1,5 @@
 # tests/smoke/test_base_page.py
-from pages.base_page import BasePage
+from bookstore.pages.base_page import BasePage
 
 
 def test_logout(logged_in_page: BasePage) -> None:

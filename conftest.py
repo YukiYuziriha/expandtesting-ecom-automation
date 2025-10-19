@@ -8,9 +8,9 @@ from filelock import FileLock
 
 from playwright.sync_api import Page, Route, Browser
 
-from pages.login_page import LoginPage
-from pages.base_page import BasePage
-from pages.profile_page import ProfilePage
+from bookstore.pages.login_page import LoginPage
+from bookstore.pages.base_page import BasePage
+from bookstore.pages.profile_page import ProfilePage
 
 AUTH_FILE = Path(".auth/storage_state.json")
 AD_DOMAINS = [
@@ -37,7 +37,7 @@ def page(page: Page):
 @pytest.fixture(scope="session")
 def test_users() -> dict:
     """Load test user credentials from JSON (read-only, session-scoped)."""
-    with open("test_data/test_users.json") as f:
+    with open("bookstore/test_data/test_users.json") as f:
         return json.load(f)
 
 

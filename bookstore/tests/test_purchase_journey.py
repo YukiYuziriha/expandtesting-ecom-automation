@@ -1,8 +1,8 @@
 # tests/ test_purchase_journey.py
-from pages.home_page import HomePage
-from pages.cart_page import CartPage
-from pages.checkout_page import CheckoutPage
-from pages.profile_page import ProfilePage
+from bookstore.pages.home_page import HomePage
+from bookstore.pages.cart_page import CartPage
+from bookstore.pages.checkout_page import CheckoutPage
+from bookstore.pages.profile_page import ProfilePage
 from playwright.sync_api import expect
 
 
