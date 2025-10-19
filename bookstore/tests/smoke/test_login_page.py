@@ -1,6 +1,6 @@
 # tests/smoke/test_login_page.py
 from playwright.sync_api import Page, expect
-from pages.login_page import LoginPage
+from bookstore.pages.login_page import LoginPage
 
 
 def test_login_rejects_empty_credentials(page: Page) -> None:

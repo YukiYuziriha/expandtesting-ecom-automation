@@ -19,8 +19,10 @@ screenshots/
 .DS_Store
 *.code-workspace
 AGENTS.md
+.cursor/
 
 .auth
 tests/smoke/test_code.py
-test_data/test_users.json
+bookstore/test_data/test_users.json
 .pre-commit-cache/
+.beads/

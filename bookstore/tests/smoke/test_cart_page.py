@@ -1,7 +1,7 @@
 # tests/smoke/test_cart_page.py
 from playwright.sync_api import Page
-from pages.cart_page import CartPage
-from pages.home_page import HomePage
+from bookstore.pages.cart_page import CartPage
+from bookstore.pages.home_page import HomePage
 
 
 def test_cart_is_empty(page: Page) -> None:

@@ -1,6 +1,6 @@
 # tests/smoke/test_home_page.py
 from playwright.sync_api import Page, expect
-from pages.home_page import HomePage
+from bookstore.pages.home_page import HomePage
 
 
 def test_search_bar(page: Page) -> None:
