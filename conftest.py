@@ -37,7 +37,7 @@ def page(page: Page):
 @pytest.fixture(scope="session")
 def test_users() -> dict:
     """Load test user credentials from JSON (read-only, session-scoped)."""
-    with open("bookstore/test_data/test_users.json") as f:
+    with open("shared/test_data/test_users.json") as f:
         return json.load(f)
 
 
