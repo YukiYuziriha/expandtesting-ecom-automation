@@ -24,3 +24,4 @@ AGENTS.md
 .auth
 tests/smoke/test_code.py
 test_data/test_users.json
+.pre-commit-cache/
