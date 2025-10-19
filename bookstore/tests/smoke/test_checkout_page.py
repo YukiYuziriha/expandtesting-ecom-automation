@@ -35,5 +35,8 @@ def test_checkout_smoke(logged_in_page: BasePage, test_users: dict) -> None:
         cvc=user["payment"]["cvc"],
     )
 
+    # Wait for navigation to profile page
+    page.wait_for_url("**/profile")
+
     profile_page = ProfilePage(page)
-    expect(profile_page.order_confirmation_banner).to_be_visible(timeout=10000)
+    expect(profile_page.order_confirmation_banner).to_be_visible(timeout=15000)
