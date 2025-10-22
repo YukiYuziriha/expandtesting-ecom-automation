@@ -1,9 +1,11 @@
 # conftest.py
-import pytest
 import json
+import os
 import re
 from pathlib import Path
 from typing import Iterator
+
+import pytest
 from filelock import FileLock
 
 from playwright.sync_api import Page, Route, Browser
@@ -34,11 +36,29 @@ def page(page: Page):
     yield page
 
 
+TEST_USERS_FILE = Path("shared/test_data/test_users.json")
+
+
 @pytest.fixture(scope="session")
 def test_users() -> dict:
-    """Load test user credentials from JSON (read-only, session-scoped)."""
-    with open("shared/test_data/test_users.json") as f:
-        return json.load(f)
+    """Load test user credentials from an env var or JSON fixture."""
+    raw = os.getenv("TEST_USERS_JSON")
+    if raw:
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                "TEST_USERS_JSON secret is not valid JSON."
+            ) from exc
+
+    if TEST_USERS_FILE.is_file():
+        with TEST_USERS_FILE.open() as f:
+            return json.load(f)
+
+    raise FileNotFoundError(
+        "Test user credentials were not provided. Set the TEST_USERS_JSON env "
+        "variable or create shared/test_data/test_users.json."
+    )
 
 
 @pytest.fixture(scope="session")

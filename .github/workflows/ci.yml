@@ -8,6 +8,8 @@ on:
 jobs:
   test-bookstore:
     runs-on: ubuntu-22.04
+    env:
+      TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
     strategy:
       matrix:
         browser: [chromium, firefox]
@@ -38,11 +40,6 @@ jobs:
       - name: Type check 
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases . 
       
-      - name: Create test data
-        run: |
-          mkdir -p bookstore/test_data
-          echo '${{ secrets.TEST_USERS_JSON }}' > bookstore/test_data/test_users.json
-
       - name: Run bookstore E2E tests in parallel
         run: |
           pytest bookstore/tests/ -v --browser ${{ matrix.browser }} --video on --tracing on -n auto --randomly-seed=${{ github.run_number }}
@@ -59,6 +56,8 @@ jobs:
 
   test-notes:
     runs-on: ubuntu-22.04
+    env:
+      TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
 
     steps:
       - name: Checkout code
@@ -82,11 +81,7 @@ jobs:
       - name: Type check 
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases . 
       
-      - name: Create test data
-        run: |
-          mkdir -p bookstore/test_data
-          echo '${{ secrets.TEST_USERS_JSON }}' > bookstore/test_data/test_users.json
-
       - name: Run notes API tests
         run: |
           pytest notes/tests/ -v --randomly-seed=${{ github.run_number }}
+
