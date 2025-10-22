@@ -47,9 +47,7 @@ def test_users() -> dict:
         try:
             return json.loads(raw)
         except json.JSONDecodeError as exc:
-            raise ValueError(
-                "TEST_USERS_JSON secret is not valid JSON."
-            ) from exc
+            raise ValueError("TEST_USERS_JSON secret is not valid JSON.") from exc
 
     if TEST_USERS_FILE.is_file():
         with TEST_USERS_FILE.open() as f:
