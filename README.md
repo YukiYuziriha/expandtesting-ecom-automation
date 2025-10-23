@@ -29,6 +29,7 @@ This isn't just a collection of test scripts; it's a demonstration of a professi
 | **CI/CD Pipeline** | A GitHub Actions workflow runs on every push and PR, executing the full E2E suite in parallel across Chromium and Firefox. It includes linting (`ruff`) and type-checking (`mypy`) gates.                                                                                             |
 | **Observability** | On test failure, the CI pipeline automatically uploads **video recordings**, **Playwright traces**, and **screenshots** as artifacts, enabling rapid, precise debugging without needing to re-run locally.                                                                          |
 | **Ad & Tracker Blocking** | A layered defense combines network-level request blocking with DOM-level ad dismissal to create a stable, noise-free test environment.                                                                                                                                                      |
+| **Marker-Driven Suites** | All tests are tagged with pytest markers (`smoke`, `ui`, `api`, `e2e`, `bookstore`, `notes`) so CI can run targeted suites and developers can slice the matrix locally with a single flag. |
 
 ---
 
@@ -72,6 +73,13 @@ playwright install --with-deps
 ```bash
 # Run all tests in parallel (headless)
 pytest tests/ -v -n auto
+
+# Run only smoke checks (bookstore UI + notes API)
+pytest -m "smoke"
+
+# Focus on a specific surface
+pytest -m "bookstore and ui"
+pytest -m "notes and api"
 
 # Run tests in a specific file (headed, for debugging)
 pytest tests/test_purchase_journey.py --headed

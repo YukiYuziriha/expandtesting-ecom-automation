@@ -1,8 +1,12 @@
 # tests/smoke/test_login_page.py
+import pytest
 from playwright.sync_api import Page, expect
 from bookstore.pages.login_page import LoginPage
 
 
+@pytest.mark.bookstore
+@pytest.mark.ui
+@pytest.mark.smoke
 def test_login_rejects_empty_credentials(page: Page) -> None:
     """Smoke: Login form shows error when both fields are empty."""
     login_page = LoginPage(page)
@@ -12,6 +16,9 @@ def test_login_rejects_empty_credentials(page: Page) -> None:
     expect(login_page.credentials_error_message).to_be_visible(timeout=10000)
 
 
+@pytest.mark.bookstore
+@pytest.mark.ui
+@pytest.mark.smoke
 def test_login_rejects_invalid_credentials(page: Page) -> None:
     """Smoke: Login form shows error for malformed email and short password."""
     login_page = LoginPage(page)
@@ -21,6 +28,9 @@ def test_login_rejects_invalid_credentials(page: Page) -> None:
     expect(login_page.credentials_error_message).to_be_visible(timeout=10000)
 
 
+@pytest.mark.bookstore
+@pytest.mark.ui
+@pytest.mark.smoke
 def test_login_success_with_valid_credentials(page: Page, test_users: dict) -> None:
     """Smoke: Valid credentials redirect to profile page."""
     login_page = LoginPage(page)

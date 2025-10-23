@@ -1,7 +1,11 @@
 # notes/tests/smoke/test_create_note.py
+import pytest
 from notes.helpers.api_client import ApiClient
 
 
+@pytest.mark.notes
+@pytest.mark.api
+@pytest.mark.smoke
 def test_create_note(api_client_auth: ApiClient) -> None:
     note_id: str | None = None
     try:
