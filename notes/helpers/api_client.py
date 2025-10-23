@@ -78,3 +78,8 @@ class ApiClient:
         path = f"/notes/{note_id}"
 
         return self._request(DELETE, path)
+
+    def get_all_notes(self) -> dict:
+        path = "/notes"
+
+        return self._request(GET, path)
