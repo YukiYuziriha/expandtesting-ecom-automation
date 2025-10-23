@@ -10,7 +10,9 @@ from playwright.sync_api import expect
 @pytest.mark.bookstore
 @pytest.mark.ui
 @pytest.mark.e2e
-def test_authenticated_purchase_journey(logged_in_page, test_users) -> None:
+def test_authenticated_purchase_journey(
+    logged_in_page, test_users, profile_name: str
+) -> None:
     """
     P0 E2E Full authenticated purchase flow.
     Covers: search, add to cart, checkout, order confirmation.
@@ -34,7 +36,7 @@ def test_authenticated_purchase_journey(logged_in_page, test_users) -> None:
     cart_page.proceed_to_checkout()
 
     # Step 4: Fill and submit checkout form
-    user = test_users["profile1"]
+    user = test_users[profile_name]
     checkout_page = CheckoutPage(page)
     checkout_page.fill_and_submit(
         name=user["billing"]["name"],

@@ -68,6 +68,9 @@ pip install -r requirements.txt
 playwright install --with-deps
 ````
 
+### **2.1 Provide Test Credentials**
+The suite looks for credentials in the `TEST_USERS_JSON` environment variable or a local `shared/test_data/test_users.json` file (git-ignored). Profiles are keyed by name (e.g., `profile1`, `profile2`), and you can select one at runtime with `pytest --profile=<name>`. If no profile is specified, `profile1` is used by default.
+
 ### **3. Running Tests**
 
 ```bash
@@ -86,6 +89,9 @@ pytest tests/test_purchase_journey.py --headed
 
 # Run tests only in a specific browser
 pytest tests/ -v --browser firefox
+
+# Switch the active test user profile (defaults to profile1)
+pytest -k login --profile=profile2
 ```
 
 -----

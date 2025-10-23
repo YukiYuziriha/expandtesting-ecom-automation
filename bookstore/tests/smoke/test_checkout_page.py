@@ -12,7 +12,9 @@ from playwright.sync_api import expect
 @pytest.mark.ui
 @pytest.mark.smoke
 @pytest.mark.e2e
-def test_checkout_smoke(logged_in_page: BasePage, test_users: dict) -> None:
+def test_checkout_smoke(
+    logged_in_page: BasePage, test_users: dict, profile_name: str
+) -> None:
     """
     Smoke test for the full authenticated purchase journey.
     """
@@ -27,7 +29,7 @@ def test_checkout_smoke(logged_in_page: BasePage, test_users: dict) -> None:
     cart_page.load()
     cart_page.proceed_to_checkout()
 
-    user = test_users["profile1"]
+    user = test_users[profile_name]
     checkout_page = CheckoutPage(page)
 
     checkout_page.fill_and_submit(
