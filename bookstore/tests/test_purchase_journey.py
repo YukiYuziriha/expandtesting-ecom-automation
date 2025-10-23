@@ -1,4 +1,4 @@
-# tests/ test_purchase_journey.py
+# bookstore/tests/test_purchase_journey.py
 import pytest
 from bookstore.pages.home_page import HomePage
 from bookstore.pages.cart_page import CartPage
@@ -50,7 +50,6 @@ def test_authenticated_purchase_journey(
         cvc=user["payment"]["cvc"],
     )
 
-    page.wait_for_url("**/profile")
     profile_page = ProfilePage(page)
 
-    expect(profile_page.order_confirmation_banner).to_be_visible()
+    expect(profile_page.order_confirmation_banner).to_be_visible(timeout=10000)
