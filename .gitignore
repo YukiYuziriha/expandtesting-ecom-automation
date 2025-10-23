@@ -23,6 +23,6 @@ AGENTS.md
 
 .auth
 tests/smoke/test_code.py
-bookstore/test_data/test_users.json
+shared/test_data/test_users.json
 .pre-commit-cache/
 .beads/

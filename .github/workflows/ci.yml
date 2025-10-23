@@ -6,8 +6,10 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  test-bookstore:
     runs-on: ubuntu-22.04
+    env:
+      TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
     strategy:
       matrix:
         browser: [chromium, firefox]
@@ -38,12 +40,7 @@ jobs:
       - name: Type check 
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases . 
       
-      - name: Create test data
-        run: |
-          mkdir -p bookstore/test_data
-          echo '${{ secrets.TEST_USERS_JSON }}' > bookstore/test_data/test_users.json
-
-      - name: Run E2E tests in parallel
+      - name: Run bookstore E2E tests in parallel
         run: |
           pytest bookstore/tests/ -v --browser ${{ matrix.browser }} --video on --tracing on -n auto --randomly-seed=${{ github.run_number }}
 
@@ -51,8 +48,40 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: failure-artifacts-${{ matrix.browser }}
+          name: bookstore-failure-artifacts-${{ matrix.browser }}
           path: |
             test-results/
             videos/
             screenshots/
+
+  test-notes:
+    runs-on: ubuntu-22.04
+    env:
+      TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint and format check
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Type check 
+        run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases . 
+      
+      - name: Run notes API tests
+        run: |
+          pytest notes/tests/ -v --randomly-seed=${{ github.run_number }}
+
