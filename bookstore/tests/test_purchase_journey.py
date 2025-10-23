@@ -1,5 +1,4 @@
 # tests/ test_purchase_journey.py
-import re
 import pytest
 from bookstore.pages.home_page import HomePage
 from bookstore.pages.cart_page import CartPage
@@ -35,22 +34,23 @@ def test_authenticated_purchase_journey(
     cart_page = CartPage(page)
     cart_page.load()
     cart_page.proceed_to_checkout()
+    page.wait_for_url("**/checkout")
 
     # Step 4: Fill and submit checkout form
     user = test_users[profile_name]
     checkout_page = CheckoutPage(page)
 
-    # anti-flakiness pattern
-    with page.expect_navigation(url=re.compile(r".*/profile")):
-        checkout_page.fill_and_submit(
-            name=user["billing"]["name"],
-            address=user["billing"]["address"],
-            card_name="Test Cardholder",
-            card_number=user["payment"]["card_number"],
-            exp_month=user["payment"]["exp_month"],
-            exp_year=user["payment"]["exp_year"],
-            cvc=user["payment"]["cvc"],
-        )
+    checkout_page.fill_and_submit(
+        name=user["billing"]["name"],
+        address=user["billing"]["address"],
+        card_name="Test Cardholder",
+        card_number=user["payment"]["card_number"],
+        exp_month=user["payment"]["exp_month"],
+        exp_year=user["payment"]["exp_year"],
+        cvc=user["payment"]["cvc"],
+    )
 
+    page.wait_for_url("**/profile")
     profile_page = ProfilePage(page)
+
     expect(profile_page.order_confirmation_banner).to_be_visible()
