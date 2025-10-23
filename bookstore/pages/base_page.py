@@ -15,7 +15,7 @@ class BasePage:
     def _safe_goto(self, url: str) -> None:
         """Navigate and auto-dismiss ads."""
         full_url = f"{BASE_URL}{url}"
-        self.page.goto(full_url)
+        self.page.goto(full_url, wait_until="domcontentloaded")
         self.dismiss_any_ads()
 
     def dismiss_any_ads(self) -> None:
