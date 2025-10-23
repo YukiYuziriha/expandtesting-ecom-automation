@@ -31,12 +31,14 @@ def test_login_rejects_invalid_credentials(page: Page) -> None:
 @pytest.mark.bookstore
 @pytest.mark.ui
 @pytest.mark.smoke
-def test_login_success_with_valid_credentials(page: Page, test_users: dict) -> None:
+def test_login_success_with_valid_credentials(
+    page: Page, test_users: dict, profile_name: str
+) -> None:
     """Smoke: Valid credentials redirect to profile page."""
     login_page = LoginPage(page)
     login_page.load()
 
-    user = test_users["profile1"]
+    user = test_users[profile_name]
     login_page.login(user["email"], user["password"])
 
     page.wait_for_url("**/profile")

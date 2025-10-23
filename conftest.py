@@ -39,6 +39,28 @@ def page(page: Page):
 TEST_USERS_FILE = Path("shared/test_data/test_users.json")
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Register custom CLI options for the test suite."""
+    parser.addoption(
+        "--profile",
+        action="store",
+        default="profile1",
+        help="Name of the test user profile to use (default: profile1).",
+    )
+
+
+@pytest.fixture(scope="session")
+def profile_name(pytestconfig: pytest.Config, test_users: dict) -> str:
+    """Resolve the active profile name from CLI options and validate it exists."""
+    profile = pytestconfig.getoption("profile")
+    if profile not in test_users:
+        available = ", ".join(sorted(test_users))
+        raise pytest.UsageError(
+            f"Unknown profile '{profile}'. Available profiles: {available}."
+        )
+    return profile
+
+
 @pytest.fixture(scope="session")
 def test_users() -> dict:
     """Load test user credentials from an env var or JSON fixture."""
@@ -60,32 +82,35 @@ def test_users() -> dict:
 
 
 @pytest.fixture(scope="session")
-def auth_file(
-    browser: Browser, test_users: dict, request: pytest.FixtureRequest
-) -> Path:
+def auth_file(browser: Browser, test_users: dict, profile_name: str) -> Path:
     """
     Session-scoped fixture to log in once and save state.
     Reuses existing state if available. Safe for parallel execution.
     """
-    AUTH_FILE.parent.mkdir(exist_ok=True)
-    lock_path = AUTH_FILE.with_suffix(".lock")
+    auth_path = (
+        AUTH_FILE
+        if profile_name == "profile1"
+        else AUTH_FILE.with_name(f"{AUTH_FILE.stem}_{profile_name}{AUTH_FILE.suffix}")
+    )
+    auth_path.parent.mkdir(exist_ok=True)
+    lock_path = auth_path.with_suffix(".lock")
 
     with FileLock(lock_path):
-        if AUTH_FILE.is_file():
+        if auth_path.is_file():
             # Reuse existing auth state — no login needed
-            return AUTH_FILE
+            return auth_path
 
         # Otherwise, log in and save state
         page = browser.new_page()
-        user = test_users["profile1"]
+        user = test_users[profile_name]
         login_page = LoginPage(page)
         login_page.load()
         login_page.login(user["email"], user["password"])
         page.wait_for_url("**/profile", timeout=10000)
-        page.context.storage_state(path=AUTH_FILE)
+        page.context.storage_state(path=auth_path)
         page.close()
 
-    return AUTH_FILE
+    return auth_path
 
 
 @pytest.fixture()
