@@ -1,9 +1,13 @@
 # tests/smoke/test_cart_page.py
+import pytest
 from playwright.sync_api import Page
 from bookstore.pages.cart_page import CartPage
 from bookstore.pages.home_page import HomePage
 
 
+@pytest.mark.bookstore
+@pytest.mark.ui
+@pytest.mark.smoke
 def test_cart_is_empty(page: Page) -> None:
     cart_page = CartPage(page)
     cart_page.load()
@@ -11,6 +15,9 @@ def test_cart_is_empty(page: Page) -> None:
     assert cart_page.is_cart_empty()
 
 
+@pytest.mark.bookstore
+@pytest.mark.ui
+@pytest.mark.smoke
 def test_can_remove_cart_item(page: Page) -> None:
     home_page = HomePage(page)
     home_page.load()

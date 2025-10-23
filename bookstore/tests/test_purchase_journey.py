@@ -1,4 +1,5 @@
 # tests/ test_purchase_journey.py
+import pytest
 from bookstore.pages.home_page import HomePage
 from bookstore.pages.cart_page import CartPage
 from bookstore.pages.checkout_page import CheckoutPage
@@ -6,6 +7,9 @@ from bookstore.pages.profile_page import ProfilePage
 from playwright.sync_api import expect
 
 
+@pytest.mark.bookstore
+@pytest.mark.ui
+@pytest.mark.e2e
 def test_authenticated_purchase_journey(logged_in_page, test_users) -> None:
     """
     P0 E2E Full authenticated purchase flow.

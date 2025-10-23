@@ -1,4 +1,5 @@
 # tests/smoke/test_checkout_page.py
+import pytest
 from bookstore.pages.home_page import HomePage
 from bookstore.pages.cart_page import CartPage
 from bookstore.pages.checkout_page import CheckoutPage
@@ -7,6 +8,10 @@ from bookstore.pages.base_page import BasePage
 from playwright.sync_api import expect
 
 
+@pytest.mark.bookstore
+@pytest.mark.ui
+@pytest.mark.smoke
+@pytest.mark.e2e
 def test_checkout_smoke(logged_in_page: BasePage, test_users: dict) -> None:
     """
     Smoke test for the full authenticated purchase journey.

@@ -1,8 +1,12 @@
 # notes/tests/smoke/test_login.py
+import pytest
 from notes.helpers.api_client import ApiClient
 from config import BASE_URL_API
 
 
+@pytest.mark.notes
+@pytest.mark.api
+@pytest.mark.smoke
 def test_login(test_users: dict) -> None:
     api_client = ApiClient(BASE_URL_API)
     user = test_users["profile1"]
