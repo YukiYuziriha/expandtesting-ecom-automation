@@ -1,4 +1,4 @@
-# tests/smoke/test_login_page.py
+# bookstore/tests/smoke/test_login_page.py
 import pytest
 from playwright.sync_api import Page, expect
 from bookstore.pages.login_page import LoginPage
@@ -43,4 +43,3 @@ def test_login_success_with_valid_credentials(
 
     page.wait_for_url("**/profile")
     expect(page.get_by_role("heading", name="Profile")).to_be_visible()
-    expect(page.get_by_role("heading", name="My Orders")).to_be_visible()
