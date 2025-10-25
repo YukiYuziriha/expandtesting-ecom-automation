@@ -1,4 +1,5 @@
 name: ci
+
 on:
   push:
     branches: ['**']
@@ -23,6 +24,18 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/.cache/playwright
+          key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-${{ matrix.browser }}-
 
       - name: Install Python dependencies
         run: |
@@ -37,12 +50,16 @@ jobs:
           ruff check .
           ruff format --check .
 
-      - name: Type check 
-        run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases . 
-      
+      - name: Type check
+        run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
+
       - name: Run bookstore E2E tests in parallel
         run: |
-          pytest bookstore/tests/ -v --browser ${{ matrix.browser }} --video on --tracing on -n auto --randomly-seed=${{ github.run_number }}
+          pytest bookstore/tests/ -v \
+            --browser ${{ matrix.browser }} \
+            --video on --tracing on \
+            -n auto \
+            --randomly-seed=${{ github.run_number }}
 
       - name: Upload failure artifacts
         if: failure()
@@ -67,6 +84,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
 
       - name: Install Python dependencies
         run: |
@@ -78,10 +97,9 @@ jobs:
           ruff check .
           ruff format --check .
 
-      - name: Type check 
-        run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases . 
-      
+      - name: Type check
+        run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
+
       - name: Run notes API tests
         run: |
           pytest notes/tests/ -v --randomly-seed=${{ github.run_number }}
-
