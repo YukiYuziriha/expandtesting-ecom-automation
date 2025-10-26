@@ -1,4 +1,4 @@
-# shared/helpers/api_client.py
+# notes/helpers/api_client.py
 import requests
 from typing import Literal
 
@@ -88,3 +88,31 @@ class ApiClient:
         path = f"/notes/{note_id}"
 
         return self._request(GET, path)
+
+    def update_note(
+        self,
+        note_id: str,
+        title: str,
+        description: str,
+        completed: bool,
+        category: CategoryType = "Home",
+    ) -> dict:
+        path = f"/notes/{note_id}"
+
+        if category not in self.VALID_CATEGORIES:
+            cats = sorted(self.VALID_CATEGORIES)
+            opts = (
+                (", ".join(f"'{c}'" for c in cats[:-1]) + f", or '{cats[-1]}'")
+                if len(cats) > 1
+                else f"'{cats[0]}'"
+            )
+            raise ValueError(f"Invalid category: {category}. Must be one of: {opts}")
+
+        data = {
+            "title": title,
+            "description": description,
+            "completed": "true" if completed else "false",
+            "category": category,
+        }
+
+        return self._request(PUT, path, data=data)
