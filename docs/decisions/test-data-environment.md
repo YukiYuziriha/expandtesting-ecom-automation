@@ -21,6 +21,7 @@
   - Use Playwright `route.abort()` to block ads/trackers; `route.fulfill()` only for third-party or flaky integrations.
   - Keep user credentials and cart configs in `test_data/`; manage sensitive data via `.secrets.baseline`.
   - Fresh browser context per test, seeded from cached auth state set up once per session.
+  - API suites (Notes app) provision temporary data via fixtures and register cleanup hooks to delete created records immediately after each test.
 
 - **Consequences**
   - ✅ Tests reflect real UI/API behavior while remaining stable.
