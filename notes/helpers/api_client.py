@@ -2,6 +2,7 @@
 import requests
 from typing import Literal
 
+
 GET = "GET"
 POST = "POST"
 PUT = "PUT"
@@ -19,6 +20,30 @@ class ApiClient:
         self.base_url = BASE_URL_API
         self.token: str | None = None
         self.timeout = timeout
+
+    def _coerce_completed(self, value: object) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.strip().lower() == "true"
+        return bool(value)
+
+    def _normalize_resource(self, resource: object) -> object:
+        if isinstance(resource, dict) and "completed" in resource:
+            normalized = dict(resource)
+            normalized["completed"] = self._coerce_completed(normalized["completed"])
+            return normalized
+        return resource
+
+    def _normalize_payload(self, payload: dict) -> dict:
+        if "data" not in payload:
+            return payload
+        data = payload["data"]
+        if isinstance(data, dict):
+            payload["data"] = self._normalize_resource(data)
+        elif isinstance(data, list):
+            payload["data"] = [self._normalize_resource(item) for item in data]
+        return payload
 
     def _request(
         self,
@@ -46,7 +71,8 @@ class ApiClient:
         response.raise_for_status()
         if not response.content:
             return {}
-        return response.json()
+        payload = response.json()
+        return self._normalize_payload(payload)
 
     def login_user(self, email: str, password: str) -> dict:
         path = "/users/login"
@@ -71,8 +97,7 @@ class ApiClient:
             raise ValueError(f"Invalid category: {category}. Must be one of: {opts}")
         data = {"title": title, "description": description, "category": category}
 
-        result = self._request(POST, path, data=data)
-        return result
+        return self._request(POST, path, data=data)
 
     def delete_note(self, note_id: str) -> dict:
         path = f"/notes/{note_id}"
