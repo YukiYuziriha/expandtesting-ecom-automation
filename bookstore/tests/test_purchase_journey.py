@@ -11,7 +11,7 @@ from playwright.sync_api import expect
 @pytest.mark.ui
 @pytest.mark.e2e
 def test_authenticated_purchase_journey(
-    logged_in_page, test_users, profile_name: str
+    logged_in_page, test_users, profile_name: str, orders_cleanup
 ) -> None:
     """
     P0 E2E Full authenticated purchase flow.

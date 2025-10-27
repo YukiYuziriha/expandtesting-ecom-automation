@@ -13,7 +13,7 @@ from playwright.sync_api import expect
 @pytest.mark.smoke
 @pytest.mark.e2e
 def test_checkout_smoke(
-    logged_in_page: BasePage, test_users: dict, profile_name: str
+    logged_in_page: BasePage, test_users: dict, profile_name: str, orders_cleanup
 ) -> None:
     """
     Smoke test for the full authenticated purchase journey.

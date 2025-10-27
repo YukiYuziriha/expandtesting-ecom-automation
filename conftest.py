@@ -11,7 +11,6 @@ from filelock import FileLock
 from playwright.sync_api import Page, Route, Browser
 
 from bookstore.pages.login_page import LoginPage
-from bookstore.pages.base_page import BasePage
 from bookstore.pages.profile_page import ProfilePage
 
 AUTH_FILE = Path(".auth/storage_state.json")
@@ -114,7 +113,7 @@ def auth_file(browser: Browser, test_users: dict, profile_name: str) -> Path:
 
 
 @pytest.fixture()
-def logged_in_page(browser: Browser, auth_file: Path) -> Iterator[BasePage]:
+def logged_in_page(browser: Browser, auth_file: Path) -> Iterator[ProfilePage]:
     """
     Returns a BasePage instance from a new, pre-authenticated
     browser context. The page is navigated to the profile page
@@ -128,3 +127,12 @@ def logged_in_page(browser: Browser, auth_file: Path) -> Iterator[BasePage]:
 
     yield profile_page
     context.close()
+
+
+@pytest.fixture()
+def orders_cleanup(logged_in_page: ProfilePage) -> Iterator[None]:
+    """For tests that create orders, clear them before and after the run."""
+    yield
+
+    logged_in_page.load()
+    logged_in_page.delete_all_orders_if_present()
