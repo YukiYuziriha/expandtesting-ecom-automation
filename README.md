@@ -71,6 +71,8 @@ playwright install --with-deps
 ### **2.1 Provide Test Credentials**
 The suite looks for credentials in the `TEST_USERS_JSON` environment variable or a local `shared/test_data/test_users.json` file (git-ignored). Profiles are keyed by name (e.g., `profile1`, `profile2`), and you can select one at runtime with `pytest --profile=<name>`. If no profile is specified, `profile1` is used by default.
 
+> ℹ️ Notes API tests exercise the live service at `https://practice.expandtesting.com/notes/api`. Make sure the credentials you supply are valid for that environment and that outbound network access is available. Tests create temporary notes and the fixtures clean them up automatically after each run.
+
 ### **3. Running Tests**
 
 ```bash
