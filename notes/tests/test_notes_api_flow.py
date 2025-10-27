@@ -23,6 +23,9 @@ def test_notes_api_flow(
     note_cleanup(note_id)
 
     created_at = response_create["data"]["created_at"]
+    assert response_create["data"]["title"] == title
+    assert response_create["data"]["description"] == description
+    assert response_create["data"]["category"] == "Home"
     assert response_create["data"]["completed"] is False
 
     # UPDATE (full PUT)

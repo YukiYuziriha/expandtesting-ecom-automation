@@ -24,3 +24,8 @@ def test_get_all_notes(
 
     assert my_note is not None, f"Could not find note with id {note_id}"
     assert my_note["title"] == "test title GET", "Title matches created value"
+    assert (
+        my_note["description"] == "test descriptiom"
+    ), "Description matches created value"
+    assert my_note["category"] == "Home", "Category defaults to Home"
+    assert isinstance(my_note["completed"], bool), "Completed flag is boolean"

@@ -16,5 +16,10 @@ def test_create_note(
     assert response["success"] is True, "Note created successfully"
     assert "id" in response["data"], "Note ID is present"
     assert response["data"]["title"] == "test title", "Title is correct"
+    assert (
+        response["data"]["description"] == "test description"
+    ), "Description is correct"
+    assert response["data"]["category"] == "Home", "Category defaults to Home"
+    assert response["data"]["completed"] is False, "Completed defaults to False"
 
     note_cleanup(response["data"]["id"])
