@@ -1,16 +1,21 @@
-# notes/tests/smoke/test_delete_note.py
-from notes.helpers.api_client import ApiClient
+from collections.abc import Callable
+from typing import Any
+
 import pytest
 import requests
+
+from notes.helpers.api_client import ApiClient
 
 
 @pytest.mark.notes
 @pytest.mark.api
 @pytest.mark.smoke
-def test_delete_note(api_client_auth: ApiClient):
-    note_id = api_client_auth.create_note("test title", "test description")["data"][
-        "id"
-    ]
+def test_delete_note(
+    api_client_auth: ApiClient, note_factory: Callable[..., dict[str, Any]]
+) -> None:
+    note = note_factory(title="test title", description="test description")
+    note_id = note["data"]["id"]
+
     response = api_client_auth.delete_note(note_id)
 
     assert response["success"] is True, "Note deleted successfully"

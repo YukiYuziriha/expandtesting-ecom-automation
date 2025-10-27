@@ -1,5 +1,7 @@
 # notes/conftest.py
 from collections.abc import Callable, Iterator
+from typing import Any
+from uuid import uuid4
 
 import pytest
 import requests
@@ -36,3 +38,26 @@ def note_cleanup(api_client_auth: ApiClient) -> Iterator[Callable[[str], None]]:
         except requests.exceptions.HTTPError as exc:
             if exc.response is None or exc.response.status_code not in {400, 404}:
                 raise
+
+
+@pytest.fixture
+def note_factory(
+    api_client_auth: ApiClient, note_cleanup: Callable[[str], None]
+) -> Callable[..., dict[str, Any]]:
+    """Create a note with optional overrides and register it for cleanup."""
+
+    def create_note(
+        *,
+        title: str | None = None,
+        description: str | None = None,
+        category: str = "Home",
+    ) -> dict[str, Any]:
+        generated_title = title or f"Auto Note {uuid4().hex[:8]}"
+        generated_description = description or f"Auto Description {uuid4().hex[:8]}"
+        response = api_client_auth.create_note(
+            generated_title, generated_description, category
+        )
+        note_cleanup(response["data"]["id"])
+        return response
+
+    return create_note

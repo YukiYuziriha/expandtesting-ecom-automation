@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -11,16 +12,15 @@ from notes.helpers.api_client import ApiClient
 @pytest.mark.api
 @pytest.mark.e2e
 def test_notes_api_flow(
-    api_client_auth: ApiClient, note_cleanup: Callable[[str], None]
+    api_client_auth: ApiClient, note_factory: Callable[..., dict[str, Any]]
 ) -> None:
     # CREATE
     title = f"Full Flow Title {uuid4().hex[:8]}"
     description = "Full Flow Description"
-    response_create = api_client_auth.create_note(title, description)
+    response_create = note_factory(title=title, description=description)
     assert response_create["success"] is True
 
     note_id = response_create["data"]["id"]
-    note_cleanup(note_id)
 
     created_at = response_create["data"]["created_at"]
     assert response_create["data"]["title"] == title

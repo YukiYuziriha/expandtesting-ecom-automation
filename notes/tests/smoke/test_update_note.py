@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from typing import Any
 
 import pytest
 
@@ -9,13 +10,12 @@ from notes.helpers.api_client import ApiClient
 @pytest.mark.api
 @pytest.mark.smoke
 def test_update_note(
-    api_client_auth: ApiClient, note_cleanup: Callable[[str], None]
+    api_client_auth: ApiClient, note_factory: Callable[..., dict[str, Any]]
 ) -> None:
-    response_create = api_client_auth.create_note(
-        "test title POST", "test description POST"
+    response_create = note_factory(
+        title="test title POST", description="test description POST"
     )
     note_id = response_create["data"]["id"]
-    note_cleanup(note_id)
 
     created_at = response_create["data"]["created_at"]
     response_update = api_client_auth.update_note(
