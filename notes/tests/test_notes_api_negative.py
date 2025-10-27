@@ -1,4 +1,3 @@
-from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -67,9 +66,10 @@ def test_get_note_by_id_not_found(
 def test_create_note_rejects_invalid_category(
     api_client_auth: ApiClient,
 ) -> None:
-    invalid_category = cast(ApiClient.CategoryType, "Travel")
+    invalid_category = "Travel"
 
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(requests.exceptions.HTTPError) as excinfo:
         api_client_auth.create_note("invalid cat title", "desc", invalid_category)
 
-    assert "Invalid category" in str(excinfo.value)
+    assert excinfo.value.response is not None
+    assert excinfo.value.response.status_code in {400, 422}

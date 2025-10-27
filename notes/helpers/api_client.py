@@ -1,6 +1,5 @@
 # notes/helpers/api_client.py
 import requests
-from typing import Literal
 
 
 GET = "GET"
@@ -11,9 +10,6 @@ DELETE = "DELETE"
 
 
 class ApiClient:
-    VALID_CATEGORIES = {"Home", "Work", "Personal"}
-    CategoryType = Literal["Home", "Work", "Personal"]
-
     def __init__(
         self, BASE_URL_API: str, *, timeout: float | tuple[float, float] = 15.0
     ) -> None:
@@ -82,19 +78,9 @@ class ApiClient:
         self.token = result["data"]["token"]
         return result
 
-    def create_note(
-        self, title: str, description: str, category: CategoryType = "Home"
-    ) -> dict:
+    def create_note(self, title: str, description: str, category: str = "Home") -> dict:
         path = "/notes"
 
-        if category not in self.VALID_CATEGORIES:
-            cats = sorted(self.VALID_CATEGORIES)
-            opts = (
-                (", ".join(f"'{c}'" for c in cats[:-1]) + f", or '{cats[-1]}'")
-                if len(cats) > 1
-                else f"'{cats[0]}'"
-            )
-            raise ValueError(f"Invalid category: {category}. Must be one of: {opts}")
         data = {"title": title, "description": description, "category": category}
 
         return self._request(POST, path, data=data)
@@ -120,18 +106,9 @@ class ApiClient:
         title: str,
         description: str,
         completed: bool,
-        category: CategoryType = "Home",
+        category: str = "Home",
     ) -> dict:
         path = f"/notes/{note_id}"
-
-        if category not in self.VALID_CATEGORIES:
-            cats = sorted(self.VALID_CATEGORIES)
-            opts = (
-                (", ".join(f"'{c}'" for c in cats[:-1]) + f", or '{cats[-1]}'")
-                if len(cats) > 1
-                else f"'{cats[0]}'"
-            )
-            raise ValueError(f"Invalid category: {category}. Must be one of: {opts}")
 
         data = {
             "title": title,
