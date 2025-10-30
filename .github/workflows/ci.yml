@@ -75,6 +75,10 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
+    strategy:
+      matrix:
+        browser: [chromium, firefox]
+      fail-fast: false
 
     steps:
       - name: Checkout code
@@ -87,10 +91,23 @@ jobs:
           cache: 'pip'
           cache-dependency-path: requirements.txt
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/.cache/playwright
+          key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-${{ matrix.browser }}-
+
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Install Playwright browsers + system deps
+        run: python -m playwright install --with-deps ${{ matrix.browser }}
 
       - name: Lint and format check
         run: |
@@ -102,4 +119,7 @@ jobs:
 
       - name: Run notes API tests
         run: |
-          pytest notes/tests/ -v --randomly-seed=${{ github.run_number }}
+          pytest notes/tests/ -v \
+            --browser ${{ matrix.browser }} \
+            -n auto \
+            --randomly-seed=${{ github.run_number }}
