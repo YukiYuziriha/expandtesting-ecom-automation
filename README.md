@@ -73,6 +73,31 @@ The suite looks for credentials in the `TEST_USERS_JSON` environment variable or
 
 > ℹ️ Notes API tests exercise the live service at `https://practice.expandtesting.com/notes/api`. Make sure the credentials you supply are valid for that environment and that outbound network access is available. Tests create temporary notes and the fixtures clean them up automatically after each run.
 
+### **2.2 Offline Mock API Mode (Notes Tests)**
+The Notes API tests can run in **offline mode** using a hermetic, mocked API backend. This is useful for:
+- Running tests without external network dependencies
+- Local development and verification
+- Hermetic CI jobs that don't rely on external services
+
+**Enable offline mode:**
+```bash
+# Run Notes API tests with mocked backend (no network required)
+export NOTES_OFFLINE=1
+pytest -m "notes and api" -v
+
+# Run without offline mode (hit real API)
+unset NOTES_OFFLINE
+pytest -m "notes and api" -v
+```
+
+**What the mock provides:**
+- In-memory store for notes (CRUD operations)
+- Auth validation (login, token checks, 401 for unauthorized access)
+- Deterministic responses (400/404 for missing resources, 422 for invalid categories)
+- Negative test coverage (wrong credentials, invalid payloads, resource not found)
+
+The mock is **automatically enabled when `NOTES_OFFLINE=1`** and only affects tests marked with `@pytest.mark.notes`. All other tests run normally.
+
 ### **3. Running Tests**
 
 ```bash
