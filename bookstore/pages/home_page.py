@@ -31,7 +31,7 @@ class HomePage(BasePage):
     def add_book_to_cart_by_index(self, index: int = 0) -> None:
         target_button = self.add_to_cart_buttons.nth(index)
         # Wait for button to be actionable (visible + stable)
-        target_button.wait_for(state="attached", timeout=3000)
+        target_button.wait_for(state="attached", timeout=10000)
         target_button.click()
 
     @property
