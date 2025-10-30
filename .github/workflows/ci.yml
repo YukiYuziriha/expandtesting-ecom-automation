@@ -117,9 +117,43 @@ jobs:
       - name: Type check
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
 
-      - name: Run notes API tests
+      - name: Run notes UI tests
         run: |
-          pytest notes/tests/ -v \
+          pytest notes/tests/ui/ -v \
             --browser ${{ matrix.browser }} \
             -n auto \
+            --randomly-seed=${{ github.run_number }}
+
+  test-notes-api:
+    runs-on: ubuntu-22.04
+    env:
+      TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint and format check
+        run: |
+          ruff check notes/tests/api/
+          ruff format --check notes/tests/api/
+
+      - name: Type check
+        run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases notes/tests/api/
+
+      - name: Run notes API tests
+        run: |
+          pytest notes/tests/api/ -v \
             --randomly-seed=${{ github.run_number }}
