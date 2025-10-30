@@ -11,7 +11,7 @@ DELETE = "DELETE"
 
 class ApiClient:
     def __init__(
-        self, BASE_URL_API: str, *, timeout: float | tuple[float, float] = 15.0
+        self, BASE_URL_API: str, *, timeout: float | tuple[float, float] = 20.0
     ) -> None:
         self.base_url = BASE_URL_API
         self.token: str | None = None
