@@ -1,4 +1,4 @@
-from playwright.sync_api import Page
+from playwright.sync_api import Page, Locator
 from notes.pages.base_page import BasePage
 
 
@@ -29,3 +29,8 @@ class LoginPage(BasePage):
         Use .text_content() or inner_text() to read the message.
         """
         return self.page.get_by_test_id("alert-message")
+
+    @property
+    def logged_in_marker(self) -> Locator:
+        """Locator that indicates successful login."""
+        return self.page.get_by_test_id("notes-list")
