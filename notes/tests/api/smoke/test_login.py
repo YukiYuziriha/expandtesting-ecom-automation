@@ -1,4 +1,3 @@
-# notes/tests/smoke/test_login.py
 import pytest
 from notes.helpers.api_client import ApiClient
 from config import BASE_URL_API
