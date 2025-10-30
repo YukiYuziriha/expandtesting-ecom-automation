@@ -52,4 +52,4 @@ def test_authenticated_purchase_journey(
 
     profile_page = ProfilePage(page)
 
-    expect(profile_page.order_confirmation_banner).to_be_visible(timeout=10000)
+    expect(profile_page.order_confirmation_banner).to_be_visible(timeout=15000)

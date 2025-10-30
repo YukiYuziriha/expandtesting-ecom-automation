@@ -15,9 +15,38 @@ from bookstore.pages.profile_page import ProfilePage
 
 AUTH_FILE = Path(".auth/storage_state.json")
 AD_DOMAINS = [
-    "enshrouded.com",
+    # Google Ad Services (the main culprits)
     "googleads.g.doubleclick.net",
     "pagead2.googlesyndication.com",
+    "ad.doubleclick.net",
+    "googleadservices.com",
+    "googlesyndication.com",
+    "doubleclick.net",
+    "ads.google.com",
+    "adservice.google.com",
+    # Analytics/Tracking
+    "google-analytics.com",
+    "analytics.google.com",
+    # Other common ad networks
+    "taboola.com",
+    "outbrain.com",
+    "adnxs.com",
+    "ads.yahoo.com",
+    "ads.bing.com",
+    "adserver.org",
+    "adtech.com",
+    "advertising.com",
+    "atdmt.com",
+    "exponential.com",
+    "fastclick.net",
+    "media.net",
+    "openx.net",
+    "pubmatic.com",
+    "rubiconproject.com",
+    "smartadserver.com",
+    "yieldmanager.com",
+    "google_vignette",
+    "enshrouded.com",
 ]
 
 
