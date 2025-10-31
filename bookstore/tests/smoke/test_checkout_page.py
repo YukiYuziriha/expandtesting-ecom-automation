@@ -1,4 +1,5 @@
 # tests/smoke/test_checkout_page.py
+import re
 import pytest
 from bookstore.pages.home_page import HomePage
 from bookstore.pages.cart_page import CartPage
@@ -43,7 +44,7 @@ def test_checkout_smoke(
     )
 
     # Wait for navigation to profile page
-    page.wait_for_url("**/profile")
+    expect(page).to_have_url(re.compile(r".*/profile"), timeout=10_000)
 
     profile_page = ProfilePage(page)
     expect(profile_page.order_confirmation_banner).to_be_visible(timeout=15000)
