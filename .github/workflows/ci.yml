@@ -119,11 +119,21 @@ jobs:
 
       - name: Run notes UI tests
         run: |
+          mkdir -p test-results videos screenshots
           pytest notes/tests/ui/ -v \
             --browser ${{ matrix.browser }} \
             --video on --tracing on \
             -n auto \
             --randomly-seed=${{ github.run_number }}
+
+      - name: Collect test artifacts
+        if: failure()
+        run: |
+          mkdir -p test-results
+          # Copy pytest-playwright artifacts to test-results
+          if [ -d ".pytest-playwright" ]; then
+            find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
+          fi
 
       - name: Upload failure artifacts
         if: failure()
@@ -134,6 +144,8 @@ jobs:
             test-results/
             videos/
             screenshots/
+          if-no-files-found: ignore
+          retention-days: 7
 
   test-notes-api:
     runs-on: ubuntu-22.04
