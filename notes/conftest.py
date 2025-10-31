@@ -167,6 +167,43 @@ def ui_note_cleanup(
                     raise
 
 
+@pytest.fixture
+def ui_note_factory(
+    notes_logged_in_page: HomePage, ui_note_cleanup
+) -> Callable[..., dict[str, Any]]:
+    """Create notes through the UI and return the generated payload."""
+
+    def create_ui_note(
+        *,
+        title: str | None = None,
+        description: str | None = None,
+        category: str = "Home",
+        completed: bool = False,
+    ) -> dict[str, Any]:
+        generated_title = title or f"UI Auto Note {uuid4().hex[:8]}"
+        generated_description = description or f"UI Auto Description {uuid4().hex[:8]}"
+
+        notes_logged_in_page.create_note(
+            title=generated_title,
+            description=generated_description,
+            category=category,
+            completed=completed,
+        )
+
+        notes_logged_in_page.get_note_by_title(generated_title).wait_for(
+            state="visible"
+        )
+
+        return {
+            "title": generated_title,
+            "description": generated_description,
+            "category": category,
+            "completed": completed,
+        }
+
+    return create_ui_note
+
+
 # --- api testing fixtures -------------------------------------------------
 @pytest.fixture(
     scope="function"

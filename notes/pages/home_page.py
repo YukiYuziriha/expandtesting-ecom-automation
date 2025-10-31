@@ -69,3 +69,14 @@ class HomePage(BasePage):
 
         # Wait for the modal to close
         submit_button.wait_for(state="hidden")
+
+    def delete_note(self, title: str) -> None:
+        """Delete the note whose card title matches ``title``."""
+        target_card = self.get_note_by_title(title)
+        target_card.get_by_test_id("note-delete").click()
+
+        dialog = self.page.get_by_test_id("note-delete-dialog")
+        dialog.wait_for(state="visible")
+
+        dialog.get_by_test_id("note-delete-confirm").click()
+        dialog.wait_for(state="hidden")
