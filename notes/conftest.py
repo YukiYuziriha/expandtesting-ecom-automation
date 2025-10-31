@@ -25,6 +25,21 @@ NOTES_AUTH_DIR.mkdir(parents=True, exist_ok=True)
 NOTES_HOME_URL = HomePage.URL
 
 
+def _create_storage_state(
+    browser: Browser, storage_path: Path, user: dict[str, str]
+) -> None:
+    """Log in via the UI and persist the storage state to disk."""
+    page = browser.new_page()
+    login_page = LoginPage(page)
+
+    login_page.load()
+    login_page.login(user["email"], user["password"])
+
+    page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
+    page.context.storage_state(path=storage_path)
+    page.close()
+
+
 def _storage_state_is_valid(browser: Browser, storage_path: Path) -> bool:
     """Return True if the cached storage state still represents a logged-in session."""
     context = browser.new_context(storage_state=storage_path)
@@ -55,34 +70,49 @@ def notes_auth_state(browser: Browser, test_users: dict, profile_name: str) -> P
                 return storage_path
             storage_path.unlink(missing_ok=True)
 
-        page = browser.new_page()
-        login_page = LoginPage(page)
-
-        login_page.load()
         user = test_users[profile_name]
-        login_page.login(user["email"], user["password"])
-
-        page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
-        page.context.storage_state(path=storage_path)
-        page.close()
+        _create_storage_state(browser, storage_path, user)
 
     return storage_path
 
 
 @pytest.fixture()
 def notes_logged_in_page(
-    browser: Browser, notes_auth_state: Path
+    browser: Browser,
+    notes_auth_state: Path,
+    test_users: dict,
+    profile_name: str,
 ) -> Iterator[HomePage]:
     """Yield a HomePage that starts from an authenticated Notes context."""
-    context = browser.new_context(storage_state=notes_auth_state)
-    block_ads_on_context(context)
-    page = context.new_page()
+    storage_path = notes_auth_state
+    user = test_users[profile_name]
+    lock = FileLock(storage_path.with_suffix(".lock"))
 
-    home_page = HomePage(page)
-    home_page.load()
+    def open_home_page() -> tuple[HomePage, Any]:
+        temp_context = browser.new_context(storage_state=storage_path)
+        block_ads_on_context(temp_context)
+        temp_page = temp_context.new_page()
+        temp_home_page = HomePage(temp_page)
+        temp_home_page.load()
+        return temp_home_page, temp_context
 
-    page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
-    home_page.logout_button.wait_for(state="visible", timeout=5_000)
+    for attempt in range(2):
+        home_page, context = open_home_page()
+        page = home_page.page
+        try:
+            page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
+            home_page.logout_button.wait_for(state="visible", timeout=5_000)
+            break
+        except PlaywrightTimeoutError:
+            context.close()
+            if attempt == 1:
+                raise
+            with lock:
+                _create_storage_state(browser, storage_path, user)
+    else:  # pragma: no cover - defensive fallback, loop always breaks or raises
+        raise PlaywrightTimeoutError(
+            f"Could not navigate to {NOTES_HOME_URL} with refreshed storage state"
+        )
 
     try:
         yield home_page
