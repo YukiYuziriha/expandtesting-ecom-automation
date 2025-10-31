@@ -121,8 +121,19 @@ jobs:
         run: |
           pytest notes/tests/ui/ -v \
             --browser ${{ matrix.browser }} \
+            --video on --tracing on \
             -n auto \
             --randomly-seed=${{ github.run_number }}
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notes-failure-artifacts-${{ matrix.browser }}
+          path: |
+            test-results/
+            videos/
+            screenshots/
 
   test-notes-api:
     runs-on: ubuntu-22.04
