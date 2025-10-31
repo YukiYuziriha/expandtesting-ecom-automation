@@ -18,6 +18,7 @@ from notes.helpers.api_client import ApiClient
 from notes.pages.home_page import HomePage
 from notes.pages.login_page import LoginPage
 from config import BASE_URL_API
+from shared.helpers.ad_blocker import block_ads_on_context
 
 NOTES_AUTH_DIR = Path(".auth/notes")
 NOTES_AUTH_DIR.mkdir(parents=True, exist_ok=True)
@@ -32,7 +33,7 @@ def _storage_state_is_valid(browser: Browser, storage_path: Path) -> bool:
     home_page = HomePage(page)
     try:
         home_page.load()
-        page.wait_for_url(f"**{NOTES_HOME_URL}/**", timeout=10_000)
+        page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
         home_page.logout_button.wait_for(state="visible", timeout=2_000)
     except PlaywrightTimeoutError:
         return False
@@ -74,6 +75,7 @@ def notes_logged_in_page(
 ) -> Iterator[HomePage]:
     """Yield a HomePage that starts from an authenticated Notes context."""
     context = browser.new_context(storage_state=notes_auth_state)
+    block_ads_on_context(context)
     page = context.new_page()
 
     home_page = HomePage(page)
@@ -86,6 +88,52 @@ def notes_logged_in_page(
         yield home_page
     finally:
         context.close()
+
+
+# --- ui note cleanup --------------------------------------------------------
+@pytest.fixture
+def ui_note_cleanup(
+    notes_logged_in_page: HomePage, api_client_auth: ApiClient
+) -> Iterator[None]:
+    """Clean up notes created via the UI during a test using the API client."""
+
+    created_note_ids: set[str] = set()
+
+    def handle_response(response) -> None:
+        request = response.request
+        if request is None or request.method.upper() != "POST":
+            return
+        if "/notes/api/notes" not in response.url:
+            return
+
+        try:
+            payload = response.json()
+        except Exception:
+            return
+
+        note_id = payload.get("data", {}).get("id")
+        if note_id:
+            created_note_ids.add(note_id)
+
+    page = notes_logged_in_page.page
+    page.on("response", handle_response)
+
+    try:
+        yield
+    finally:
+        # Allow in-flight responses to complete before cleanup
+        page.wait_for_timeout(2000)
+
+        page.remove_listener("response", handle_response)
+
+        note_ids_to_delete = created_note_ids.copy()
+        while note_ids_to_delete:
+            note_id = note_ids_to_delete.pop()
+            try:
+                api_client_auth.delete_note(note_id)
+            except requests.exceptions.HTTPError as exc:
+                if exc.response is None or exc.response.status_code not in {400, 404}:
+                    raise
 
 
 # --- api testing fixtures -------------------------------------------------
