@@ -117,13 +117,21 @@ jobs:
       - name: Type check
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
 
-      - name: Run notes UI tests
+      - name: Run notes UI tests (parallel)
         run: |
           mkdir -p test-results videos screenshots
           pytest notes/tests/ui/ -v \
+            --ignore=notes/tests/ui/smoke/test_base_page.py \
             --browser ${{ matrix.browser }} \
             --video on --tracing on \
             -n auto \
+            --randomly-seed=${{ github.run_number }}
+
+      - name: Run notes base page test (sequential, after others)
+        run: |
+          pytest notes/tests/ui/smoke/test_base_page.py -v \
+            --browser ${{ matrix.browser }} \
+            --video on --tracing on \
             --randomly-seed=${{ github.run_number }}
 
       - name: Collect test artifacts
