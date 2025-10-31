@@ -34,3 +34,8 @@ class LoginPage(BasePage):
     def logged_in_marker(self) -> Locator:
         """Locator that indicates successful login."""
         return self.page.get_by_test_id("notes-list")
+
+    @property
+    def logged_out_marker(self) -> Locator:
+        """Locator for the login button. Most robust."""
+        return self.page.locator("a[href='/notes/app/login']")

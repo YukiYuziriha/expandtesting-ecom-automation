@@ -7,15 +7,88 @@ import json
 import re
 from datetime import datetime, timezone
 from urllib.parse import parse_qsl
-
+from playwright.sync_api import Browser, TimeoutError as PlaywrightTimeoutError
+from pathlib import Path
+from filelock import FileLock
 import pytest
 import requests
 import responses  # type: ignore
 
 from notes.helpers.api_client import ApiClient
+from notes.pages.home_page import HomePage
+from notes.pages.login_page import LoginPage
 from config import BASE_URL_API
 
+NOTES_AUTH_DIR = Path(".auth/notes")
+NOTES_AUTH_DIR.mkdir(parents=True, exist_ok=True)
+NOTES_HOME_URL = HomePage.URL
 
+
+def _storage_state_is_valid(browser: Browser, storage_path: Path) -> bool:
+    """Return True if the cached storage state still represents a logged-in session."""
+    context = browser.new_context(storage_state=storage_path)
+    page = context.new_page()
+
+    home_page = HomePage(page)
+    try:
+        home_page.load()
+        page.wait_for_url(f"**{NOTES_HOME_URL}/**", timeout=10_000)
+        home_page.logout_button.wait_for(state="visible", timeout=2_000)
+    except PlaywrightTimeoutError:
+        return False
+    finally:
+        context.close()
+
+    return True
+
+
+@pytest.fixture(scope="session")
+def notes_auth_state(browser: Browser, test_users: dict, profile_name: str) -> Path:
+    """Create a logged-in state for Notes UI tests."""
+    storage_path = NOTES_AUTH_DIR / f"storage_state_{profile_name}.json"
+    lock = FileLock(storage_path.with_suffix(".lock"))
+
+    with lock:
+        if storage_path.exists():
+            if _storage_state_is_valid(browser, storage_path):
+                return storage_path
+            storage_path.unlink(missing_ok=True)
+
+        page = browser.new_page()
+        login_page = LoginPage(page)
+
+        login_page.load()
+        user = test_users[profile_name]
+        login_page.login(user["email"], user["password"])
+
+        page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
+        page.context.storage_state(path=storage_path)
+        page.close()
+
+    return storage_path
+
+
+@pytest.fixture()
+def notes_logged_in_page(
+    browser: Browser, notes_auth_state: Path
+) -> Iterator[HomePage]:
+    """Yield a HomePage that starts from an authenticated Notes context."""
+    context = browser.new_context(storage_state=notes_auth_state)
+    page = context.new_page()
+
+    home_page = HomePage(page)
+    home_page.load()
+
+    page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
+    home_page.logout_button.wait_for(state="visible", timeout=5_000)
+
+    try:
+        yield home_page
+    finally:
+        context.close()
+
+
+# --- api testing fixtures -------------------------------------------------
 @pytest.fixture(
     scope="function"
 )  # isolate auth/token per test; switch to session for speed if safe

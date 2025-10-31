@@ -8,6 +8,7 @@ class BasePage:
 
     def __init__(self, page: Page) -> None:
         self.page = page
+        self.logout_button = page.get_by_test_id("logout")
 
     def goto(self, path: str) -> None:
         self.page.goto(f"{BASE_URL}{path}")
