@@ -43,6 +43,7 @@ def _create_storage_state(
 def _storage_state_is_valid(browser: Browser, storage_path: Path) -> bool:
     """Return True if the cached storage state still represents a logged-in session."""
     context = browser.new_context(storage_state=storage_path)
+    block_ads_on_context(context)
     page = context.new_page()
 
     home_page = HomePage(page)
