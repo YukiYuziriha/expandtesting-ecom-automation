@@ -82,38 +82,37 @@ class HomePage(BasePage):
         dialog.get_by_test_id("note-delete-confirm").click()
         dialog.wait_for(state="hidden")
 
+    def edit_note(
+        self,
+        title: str,
+        new_title: str,
+        new_description: str,
+        new_category: str = "Home",
+        completed: bool = False,
+    ) -> None:
+        """Edit the note whose card title matches ``title``."""
+        target_card = self.get_note_by_title(title)
 
-def edit_note(
-    self,
-    title: str,
-    new_title: str,
-    new_description: str,
-    new_category: str = "Home",
-    completed: bool = False,
-) -> None:
-    """Edit the note whose card title matches ``title``."""
-    target_card = self.get_note_by_title(title)
+        # Ensure the card and button are visible before clicking
+        target_card.wait_for(state="visible")
+        edit_button = target_card.get_by_test_id("note-edit")
+        edit_button.wait_for(state="visible")
+        edit_button.click()
 
-    # Ensure the card and button are visible before clicking
-    target_card.wait_for(state="visible")
-    edit_button = target_card.get_by_test_id("note-edit")
-    edit_button.wait_for(state="visible")
-    edit_button.click()
+        # Wait for the modal to be visible
+        self.note_category.wait_for(state="visible")
 
-    # Wait for the modal to be visible
-    self.note_category.wait_for(state="visible")
+        # Fill the form
+        self.note_category.select_option(new_category)
+        if completed:
+            self.note_completed.check()
+        else:
+            self.note_completed.uncheck()
 
-    # Fill the form
-    self.note_category.select_option(new_category)
-    if completed:
-        self.note_completed.check()
-    else:
-        self.note_completed.uncheck()
+        self.note_title.fill(new_title)
+        self.note_description.fill(new_description)
 
-    self.note_title.fill(new_title)
-    self.note_description.fill(new_description)
+        self.note_submit.click()
 
-    self.note_submit.click()
-
-    # Wait for the modal to close
-    self.note_submit.wait_for(state="hidden")
+        # Wait for the modal to close
+        self.note_submit.wait_for(state="hidden")
