@@ -7,7 +7,7 @@ import json
 import re
 from datetime import datetime, timezone
 from urllib.parse import parse_qsl
-from playwright.sync_api import Browser, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import Browser, TimeoutError as PlaywrightTimeoutError, Page
 from pathlib import Path
 from filelock import FileLock
 import pytest
@@ -26,6 +26,19 @@ NOTES_HOME_URL = HomePage.URL
 
 # Global registry to track all notes created during test session
 _test_note_ids: set[str] = set()
+
+
+# --- pytest-playwright plugin fixtures ---
+@pytest.fixture(scope="function")
+def browser_context_args(browser_context_args, notes_auth_state: Path):
+    """Inject storage_state into plugin-managed browser context."""
+    return {**browser_context_args, "storage_state": str(notes_auth_state)}
+
+
+@pytest.fixture(autouse=True)
+def _attach_adblock(context):
+    """Attach ad blocking to plugin-managed context."""
+    block_ads_on_context(context)
 
 
 def _purge_all_notes_auth_states() -> None:
@@ -88,34 +101,20 @@ def notes_auth_state(browser: Browser, test_users: dict, profile_name: str) -> P
 
 
 @pytest.fixture()
-def notes_logged_in_page(
-    browser: Browser,
-    notes_auth_state: Path,
-    test_users: dict,
-    profile_name: str,
-) -> Iterator[HomePage]:
-    """Yield a HomePage that starts from an authenticated Notes context."""
-    storage_path = notes_auth_state
-
-    # Create context once with auth state
-    context = browser.new_context(storage_state=storage_path)
-    block_ads_on_context(context)
-    page = context.new_page()
+def notes_logged_in_page(page: Page) -> Iterator[HomePage]:
+    """Yield a HomePage using plugin-managed page with storage_state injected."""
     home_page = HomePage(page)
     home_page.load()
 
     # Wait for page to be ready
-    try:
-        page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
-        home_page.logout_button.wait_for(state="attached", timeout=10_000)
-    except PlaywrightTimeoutError:
-        context.close()
-        raise
+    page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
+    home_page.logout_button.wait_for(state="attached", timeout=10_000)
 
     try:
         yield home_page
     finally:
-        context.close()
+        # Plugin closes page/context automatically
+        pass
 
 
 # --- session-scoped cleanup fixture ---
