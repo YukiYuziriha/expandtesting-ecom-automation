@@ -122,14 +122,22 @@ jobs:
           mkdir -p test-results videos screenshots
           pytest notes/tests/ui/ -v \
             --ignore=notes/tests/ui/smoke/test_base_page.py \
+            --ignore=notes/tests/ui/e2e/test_notes_e2e.py \
             --browser ${{ matrix.browser }} \
             --video on --tracing on \
             -n auto \
             --randomly-seed=${{ github.run_number }}
 
-      - name: Run notes base page test (sequential, after others)
+      - name: Run notes base page test (sequential, session invalidator 1/2)
         run: |
           pytest notes/tests/ui/smoke/test_base_page.py -v \
+            --browser ${{ matrix.browser }} \
+            --video on --tracing on \
+            --randomly-seed=${{ github.run_number }}
+
+      - name: Run notes e2e test (sequential, session invalidator 2/2)
+        run: |
+          pytest notes/tests/ui/e2e/test_notes_e2e.py -v \
             --browser ${{ matrix.browser }} \
             --video on --tracing on \
             --randomly-seed=${{ github.run_number }}

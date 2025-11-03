@@ -37,5 +37,12 @@ class LoginPage(BasePage):
 
     @property
     def logged_out_marker(self) -> Locator:
-        """Locator for the login button. Most robust."""
-        return self.page.locator("a[href='/notes/app/login']")
+        """
+        Locator that indicates logged out state.
+        Returns either the login link OR the session expired banner (whichever is visible).
+        """
+        login_link = self.page.locator("a[href='/notes/app/login']")
+        expired_banner = self.page.get_by_test_id("alert-message").filter(
+            has_text="Your session has expired"
+        )
+        return login_link.or_(expired_banner)

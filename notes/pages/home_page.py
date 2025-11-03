@@ -116,3 +116,27 @@ class HomePage(BasePage):
 
         # Wait for the modal to close
         self.note_submit.wait_for(state="hidden")
+
+    def is_note_present(self, title: str) -> bool:
+        """Return True if a note with the given title is visible on the page."""
+        try:
+            note_card = self.get_note_by_title(title)
+            note_card.wait_for(state="visible", timeout=2000)
+            return True
+        except Exception:
+            return False
+
+    def get_all_note_titles(self) -> list[str]:
+        """Return a list of all visible note card titles on the page."""
+        self.note_card_title.wait_for(state="visible", timeout=5000)
+        titles = []
+        for card in self.note_card.all():
+            try:
+                title_text = card.locator(
+                    "[data-testid='note-card-title']"
+                ).text_content()
+                if title_text:
+                    titles.append(title_text.strip())
+            except Exception:
+                pass
+        return titles

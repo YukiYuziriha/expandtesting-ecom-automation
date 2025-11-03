@@ -25,6 +25,13 @@ NOTES_AUTH_DIR.mkdir(parents=True, exist_ok=True)
 NOTES_HOME_URL = HomePage.URL
 
 
+def _purge_all_notes_auth_states() -> None:
+    """Delete all cached Notes storage_state files and their locks."""
+    for state_file in NOTES_AUTH_DIR.glob("storage_state_*.json"):
+        state_file.unlink(missing_ok=True)
+        state_file.with_suffix(".lock").unlink(missing_ok=True)
+
+
 def _create_storage_state(
     browser: Browser, storage_path: Path, user: dict[str, str]
 ) -> None:
@@ -152,8 +159,12 @@ def ui_note_cleanup(
     try:
         yield
     finally:
-        # Allow in-flight responses to complete before cleanup
-        page.wait_for_timeout(2000)
+        # Wait for in-flight responses to settle; use network-idle for robustness.
+        try:
+            page.wait_for_load_state("networkidle", timeout=5000)
+        except PlaywrightTimeoutError:
+            # If network-idle times out, fall back to a brief wait to allow last responses.
+            page.wait_for_timeout(1000)
 
         page.remove_listener("response", handle_response)
 
@@ -202,6 +213,33 @@ def ui_note_factory(
         }
 
     return create_ui_note
+
+
+# --- purge cached Notes auth state -----------------------------------------
+
+
+@pytest.fixture(scope="session", autouse=True)
+def notes_session_invalidator_cleanup() -> Iterator[None]:
+    """
+    Session-scoped cleanup that purges Notes auth state after all session invalidator tests.
+
+    This runs at the end of the test session to avoid race conditions with parallel tests.
+    """
+    try:
+        yield
+    finally:
+        _purge_all_notes_auth_states()
+
+
+@pytest.fixture
+def purge_notes_auth_state(request) -> Iterator[None]:
+    """
+    Mark that session invalidator tests ran (cleanup will happen at session end).
+
+    Use this in tests that press the logout button or otherwise invalidate sessions.
+    The actual purge happens at session end to avoid race conditions with parallel tests.
+    """
+    yield
 
 
 # --- api testing fixtures -------------------------------------------------
