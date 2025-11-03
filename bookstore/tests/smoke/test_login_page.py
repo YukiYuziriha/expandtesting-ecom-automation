@@ -2,6 +2,7 @@
 import pytest
 from playwright.sync_api import Page, expect
 from bookstore.pages.login_page import LoginPage
+from bookstore.pages.profile_page import ProfilePage
 
 
 @pytest.mark.bookstore
@@ -41,5 +42,5 @@ def test_login_success_with_valid_credentials(
     user = test_users[profile_name]
     login_page.login(user["email"], user["password"])
 
-    page.wait_for_url("**/profile")
+    page.wait_for_url(f"**{ProfilePage.URL}")
     expect(page.get_by_role("heading", name="Profile")).to_be_visible()

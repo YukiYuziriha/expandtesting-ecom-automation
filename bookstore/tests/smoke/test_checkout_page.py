@@ -44,7 +44,7 @@ def test_checkout_smoke(
     )
 
     # Wait for navigation to profile page
-    expect(page).to_have_url(re.compile(r".*/profile"), timeout=10_000)
+    expect(page).to_have_url(re.compile(f".*{ProfilePage.URL}"), timeout=10_000)
 
     profile_page = ProfilePage(page)
     expect(profile_page.order_confirmation_banner).to_be_visible(timeout=15000)

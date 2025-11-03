@@ -34,7 +34,7 @@ def test_authenticated_purchase_journey(
     cart_page = CartPage(page)
     cart_page.load()
     cart_page.proceed_to_checkout()
-    page.wait_for_url("**/checkout")
+    page.wait_for_url(f"**{CheckoutPage.URL}")
 
     # Step 4: Fill and submit checkout form
     user = test_users[profile_name]
