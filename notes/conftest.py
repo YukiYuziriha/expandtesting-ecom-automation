@@ -218,7 +218,7 @@ def ui_note_factory(
 # --- purge cached Notes auth state -----------------------------------------
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session", autouse=False)
 def notes_session_invalidator_cleanup() -> Iterator[None]:
     """
     Session-scoped cleanup that purges Notes auth state after all session invalidator tests.
@@ -229,17 +229,6 @@ def notes_session_invalidator_cleanup() -> Iterator[None]:
         yield
     finally:
         _purge_all_notes_auth_states()
-
-
-@pytest.fixture
-def purge_notes_auth_state(request) -> Iterator[None]:
-    """
-    Mark that session invalidator tests ran (cleanup will happen at session end).
-
-    Use this in tests that press the logout button or otherwise invalidate sessions.
-    The actual purge happens at session end to avoid race conditions with parallel tests.
-    """
-    yield
 
 
 # --- api testing fixtures -------------------------------------------------

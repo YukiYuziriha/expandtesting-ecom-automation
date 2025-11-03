@@ -9,8 +9,9 @@ from notes.pages.login_page import LoginPage
 @pytest.mark.notes
 @pytest.mark.ui
 @pytest.mark.e2e
+@pytest.mark.seq_only
 def test_notes_app_e2e_flow(
-    page: Page, test_users: dict, profile_name: str, purge_notes_auth_state
+    page: Page, test_users: dict, profile_name: str, notes_session_invalidator_cleanup
 ) -> None:
     """
     E2E test for the Notes app: login -> create -> edit -> delete -> logout.

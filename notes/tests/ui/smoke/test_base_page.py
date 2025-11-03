@@ -7,7 +7,10 @@ from notes.pages.home_page import HomePage
 @pytest.mark.notes
 @pytest.mark.ui
 @pytest.mark.smoke
-def test_logout_button(page, notes_logged_in_page: HomePage, purge_notes_auth_state):
+@pytest.mark.seq_only
+def test_logout_button(
+    page, notes_logged_in_page: HomePage, notes_session_invalidator_cleanup
+):
     notes_logged_in_page.logout_button.click()
     login_page = LoginPage(notes_logged_in_page.page)
 
