@@ -1,5 +1,5 @@
 # pages/base_page.py
-from playwright.sync_api import Page, TimeoutError
+from playwright.sync_api import Page
 from config import BASE_URL
 
 
@@ -13,27 +13,9 @@ class BasePage:
         self.cart_badge = page.locator("a[href='/bookstore/cart']")
 
     def _safe_goto(self, url: str) -> None:
-        """Navigate and auto-dismiss ads."""
+        """Navigate to a URL relative to BASE_URL."""
         full_url = f"{BASE_URL}{url}"
         self.page.goto(full_url, wait_until="domcontentloaded")
-        self.dismiss_any_ads()
-
-    def dismiss_any_ads(self) -> None:
-        """
-        Attempt to dismiss interstitial ads ONLY if they appear as DOM overlays
-        (not inside iframes). This avoids accidental ad clicks.
-        """
-        try:
-            ad_container = self.page.locator("#card:has(.creative)")
-            if ad_container.is_visible(timeout=500):
-                close_btn = self.page.get_by_label("Close ad").or_(
-                    self.page.locator("#dismiss-button")
-                )
-                if close_btn.is_visible(timeout=500):
-                    close_btn.click(timeout=1000)
-                    ad_container.wait_for(state="hidden", timeout=2000)
-        except TimeoutError:
-            pass
 
     def is_logged_in(self) -> bool:
         """

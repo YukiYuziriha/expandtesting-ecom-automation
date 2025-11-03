@@ -31,7 +31,5 @@ class CartPage(BasePage):
             full_url = urljoin(self.page.url, href)
             self.page.goto(full_url)
 
-        self.dismiss_any_ads()
-
     def proceed_to_checkout(self) -> None:
         self.checkout_button.click()
