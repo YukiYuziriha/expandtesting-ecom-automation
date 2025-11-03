@@ -121,26 +121,28 @@ jobs:
         run: |
           mkdir -p test-results videos screenshots
           pytest notes/tests/ui/ -v \
-            --ignore=notes/tests/ui/smoke/test_base_page.py \
-            --ignore=notes/tests/ui/e2e/test_notes_e2e.py \
+            -m "not seq_only" \
             --browser ${{ matrix.browser }} \
             --video on --tracing on \
             -n auto \
             --randomly-seed=${{ github.run_number }}
 
-      - name: Run notes base page test (sequential, session invalidator 1/2)
+      - name: Run notes sequential tests (session invalidators)
         run: |
-          pytest notes/tests/ui/smoke/test_base_page.py -v \
+          pytest notes/tests/ui/ -v \
+            -m "seq_only" \
             --browser ${{ matrix.browser }} \
             --video on --tracing on \
             --randomly-seed=${{ github.run_number }}
 
-      - name: Run notes e2e test (sequential, session invalidator 2/2)
+      - name: Collect sequential test artifacts
+        if: failure()
         run: |
-          pytest notes/tests/ui/e2e/test_notes_e2e.py -v \
-            --browser ${{ matrix.browser }} \
-            --video on --tracing on \
-            --randomly-seed=${{ github.run_number }}
+          mkdir -p test-results
+          # Copy pytest-playwright artifacts to test-results
+          if [ -d ".pytest-playwright" ]; then
+            find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
+          fi
 
       - name: Collect test artifacts
         if: failure()
