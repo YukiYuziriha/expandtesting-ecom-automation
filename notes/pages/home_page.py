@@ -18,6 +18,13 @@ class HomePage(BasePage):
         # Add Note modal trigger
         self.add_note_button = page.get_by_test_id("add-new-note")
 
+        # Modal form elements (shared between create and edit)
+        self.note_category = page.get_by_test_id("note-category")
+        self.note_completed = page.get_by_test_id("note-completed")
+        self.note_title = page.get_by_test_id("note-title")
+        self.note_description = page.get_by_test_id("note-description")
+        self.note_submit = page.get_by_test_id("note-submit")
+
     def load(self) -> None:
         """Navigate to the Notes home page."""
         self.goto(self.URL)
@@ -46,29 +53,23 @@ class HomePage(BasePage):
         """Open the Add Note modal, fill the form, and submit."""
         self.add_note_button.click()
 
-        # Wait for the category select to be visible (it's in the modal)
-        category_select = self.page.get_by_test_id("note-category")
-        category_select.wait_for(state="visible")
+        # Wait for the modal to be visible
+        self.note_category.wait_for(state="visible")
 
-        # Get the other form elements
-        completed_checkbox = self.page.get_by_test_id("note-completed")
-        title_input = self.page.get_by_test_id("note-title")
-        description_input = self.page.get_by_test_id("note-description")
-        submit_button = self.page.get_by_test_id("note-submit")
-
-        category_select.select_option(category)
+        # Fill the form
+        self.note_category.select_option(category)
         if completed:
-            completed_checkbox.check()
+            self.note_completed.check()
         else:
-            completed_checkbox.uncheck()
+            self.note_completed.uncheck()
 
-        title_input.fill(title)
-        description_input.fill(description)
+        self.note_title.fill(title)
+        self.note_description.fill(description)
 
-        submit_button.click()
+        self.note_submit.click()
 
         # Wait for the modal to close
-        submit_button.wait_for(state="hidden")
+        self.note_submit.wait_for(state="hidden")
 
     def delete_note(self, title: str) -> None:
         """Delete the note whose card title matches ``title``."""
@@ -80,3 +81,33 @@ class HomePage(BasePage):
 
         dialog.get_by_test_id("note-delete-confirm").click()
         dialog.wait_for(state="hidden")
+
+    def edit_note(
+        self,
+        title: str,
+        new_title: str,
+        new_description: str,
+        new_category: str = "Home",
+        completed: bool = False,
+    ) -> None:
+        """Edit the note whose card title matches ``title``."""
+        target_card = self.get_note_by_title(title)
+        target_card.get_by_test_id("note-edit").click()
+
+        # Wait for the modal to be visible
+        self.note_category.wait_for(state="visible")
+
+        # Fill the form
+        self.note_category.select_option(new_category)
+        if completed:
+            self.note_completed.check()
+        else:
+            self.note_completed.uncheck()
+
+        self.note_title.fill(new_title)
+        self.note_description.fill(new_description)
+
+        self.note_submit.click()
+
+        # Wait for the modal to close
+        self.note_submit.wait_for(state="hidden")
