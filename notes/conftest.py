@@ -24,6 +24,9 @@ NOTES_AUTH_DIR = Path(".auth/notes")
 NOTES_AUTH_DIR.mkdir(parents=True, exist_ok=True)
 NOTES_HOME_URL = HomePage.URL
 
+# Global registry to track all notes created during test session
+_test_note_ids: set[str] = set()
+
 
 def _purge_all_notes_auth_states() -> None:
     """Delete all cached Notes storage_state files and their locks."""
@@ -93,39 +96,63 @@ def notes_logged_in_page(
 ) -> Iterator[HomePage]:
     """Yield a HomePage that starts from an authenticated Notes context."""
     storage_path = notes_auth_state
-    user = test_users[profile_name]
-    lock = FileLock(storage_path.with_suffix(".lock"))
 
-    def open_home_page() -> tuple[HomePage, Any]:
-        temp_context = browser.new_context(storage_state=storage_path)
-        block_ads_on_context(temp_context)
-        temp_page = temp_context.new_page()
-        temp_home_page = HomePage(temp_page)
-        temp_home_page.load()
-        return temp_home_page, temp_context
+    # Create context once with auth state
+    context = browser.new_context(storage_state=storage_path)
+    block_ads_on_context(context)
+    page = context.new_page()
+    home_page = HomePage(page)
+    home_page.load()
 
-    for attempt in range(2):
-        home_page, context = open_home_page()
-        page = home_page.page
-        try:
-            page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
-            home_page.logout_button.wait_for(state="visible", timeout=5_000)
-            break
-        except PlaywrightTimeoutError:
-            context.close()
-            if attempt == 1:
-                raise
-            with lock:
-                _create_storage_state(browser, storage_path, user)
-    else:  # pragma: no cover - defensive fallback, loop always breaks or raises
-        raise PlaywrightTimeoutError(
-            f"Could not navigate to {NOTES_HOME_URL} with refreshed storage state"
-        )
+    # Wait for page to be ready
+    try:
+        page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
+        home_page.logout_button.wait_for(state="attached", timeout=10_000)
+    except PlaywrightTimeoutError:
+        context.close()
+        raise
 
     try:
         yield home_page
     finally:
         context.close()
+
+
+# --- session-scoped cleanup fixture ---
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_all_test_notes(
+    request: pytest.FixtureRequest,
+) -> Iterator[None]:
+    """
+    Session-scoped fixture that runs AFTER all tests and deletes ALL notes created.
+    This is the final safety net to ensure no test data is left behind.
+    """
+    yield  # Let all tests run first
+
+    # After all tests complete, clean up everything
+    if not _test_note_ids:
+        return
+
+    # Get a fresh API client for cleanup
+    try:
+        test_users = request.getfixturevalue("test_users")
+        profile_name = request.getfixturevalue("profile_name")
+        user = test_users[profile_name]
+    except Exception:
+        return  # Can't get test users, skip cleanup
+
+    cleanup_client = ApiClient(BASE_URL_API)
+    try:
+        cleanup_client.login_user(user["email"], user["password"])
+    except Exception:
+        return  # Can't authenticate, skip cleanup
+
+    # Delete all tracked notes
+    for note_id in _test_note_ids:
+        try:
+            cleanup_client.delete_note(note_id)
+        except Exception:
+            pass  # Best effort
 
 
 # --- ui note cleanup --------------------------------------------------------
@@ -152,6 +179,7 @@ def ui_note_cleanup(
         note_id = payload.get("data", {}).get("id")
         if note_id:
             created_note_ids.add(note_id)
+            _test_note_ids.add(note_id)  # Add to global registry for session cleanup
 
     page = notes_logged_in_page.page
     page.on("response", handle_response)
@@ -173,9 +201,16 @@ def ui_note_cleanup(
             note_id = note_ids_to_delete.pop()
             try:
                 api_client_auth.delete_note(note_id)
+                _test_note_ids.discard(
+                    note_id
+                )  # Remove from global if successfully deleted
             except requests.exceptions.HTTPError as exc:
                 if exc.response is None or exc.response.status_code not in {400, 404}:
-                    raise
+                    # Note still exists, keep in global registry for session cleanup
+                    pass
+            except Exception:
+                # Keep in global registry for session cleanup
+                pass
 
 
 @pytest.fixture

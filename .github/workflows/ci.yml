@@ -127,6 +127,15 @@ jobs:
             -n auto \
             --randomly-seed=${{ github.run_number }}
 
+      # Collect artifacts from parallel tests
+      - name: Collect parallel test artifacts
+        if: failure()
+        run: |
+          mkdir -p test-results
+          if [ -d ".pytest-playwright" ]; then
+            find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
+          fi
+
       - name: Run notes sequential tests (session invalidators)
         run: |
           pytest notes/tests/ui/ -v \
@@ -135,20 +144,11 @@ jobs:
             --video on --tracing on \
             --randomly-seed=${{ github.run_number }}
 
+      # Collect artifacts from sequential tests
       - name: Collect sequential test artifacts
         if: failure()
         run: |
           mkdir -p test-results
-          # Copy pytest-playwright artifacts to test-results
-          if [ -d ".pytest-playwright" ]; then
-            find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
-          fi
-
-      - name: Collect test artifacts
-        if: failure()
-        run: |
-          mkdir -p test-results
-          # Copy pytest-playwright artifacts to test-results
           if [ -d ".pytest-playwright" ]; then
             find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
           fi
