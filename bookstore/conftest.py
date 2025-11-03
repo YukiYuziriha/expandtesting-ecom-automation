@@ -7,6 +7,7 @@ from playwright.sync_api import Browser
 
 from bookstore.pages.login_page import LoginPage
 from bookstore.pages.profile_page import ProfilePage
+from shared.helpers.ad_blocker import block_ads_on_context
 
 BOOKSTORE_AUTH_DIR = Path(".auth/bookstore")
 BOOKSTORE_AUTH_DIR.mkdir(parents=True, exist_ok=True)
@@ -43,6 +44,7 @@ def logged_in_page(browser: Browser, auth_file: Path) -> Iterator[ProfilePage]:
     Return a ProfilePage instance backed by a new, pre-authenticated context.
     """
     context = browser.new_context(storage_state=auth_file)
+    block_ads_on_context(context)
     page = context.new_page()
 
     profile_page = ProfilePage(page)

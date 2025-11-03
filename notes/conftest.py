@@ -7,15 +7,231 @@ import json
 import re
 from datetime import datetime, timezone
 from urllib.parse import parse_qsl
-
+from playwright.sync_api import Browser, TimeoutError as PlaywrightTimeoutError
+from pathlib import Path
+from filelock import FileLock
 import pytest
 import requests
 import responses  # type: ignore
 
 from notes.helpers.api_client import ApiClient
+from notes.pages.home_page import HomePage
+from notes.pages.login_page import LoginPage
 from config import BASE_URL_API
+from shared.helpers.ad_blocker import block_ads_on_context
+
+NOTES_AUTH_DIR = Path(".auth/notes")
+NOTES_AUTH_DIR.mkdir(parents=True, exist_ok=True)
+NOTES_HOME_URL = HomePage.URL
 
 
+def _purge_all_notes_auth_states() -> None:
+    """Delete all cached Notes storage_state files and their locks."""
+    for state_file in NOTES_AUTH_DIR.glob("storage_state_*.json"):
+        state_file.unlink(missing_ok=True)
+        state_file.with_suffix(".lock").unlink(missing_ok=True)
+
+
+def _create_storage_state(
+    browser: Browser, storage_path: Path, user: dict[str, str]
+) -> None:
+    """Log in via the UI and persist the storage state to disk."""
+    page = browser.new_page()
+    login_page = LoginPage(page)
+
+    login_page.load()
+    login_page.login(user["email"], user["password"])
+
+    page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
+    page.context.storage_state(path=storage_path)
+    page.close()
+
+
+def _storage_state_is_valid(browser: Browser, storage_path: Path) -> bool:
+    """Return True if the cached storage state still represents a logged-in session."""
+    context = browser.new_context(storage_state=storage_path)
+    block_ads_on_context(context)
+    page = context.new_page()
+
+    home_page = HomePage(page)
+    try:
+        home_page.load()
+        page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
+        home_page.logout_button.wait_for(state="visible", timeout=2_000)
+    except PlaywrightTimeoutError:
+        return False
+    finally:
+        context.close()
+
+    return True
+
+
+@pytest.fixture(scope="session")
+def notes_auth_state(browser: Browser, test_users: dict, profile_name: str) -> Path:
+    """Create a logged-in state for Notes UI tests."""
+    storage_path = NOTES_AUTH_DIR / f"storage_state_{profile_name}.json"
+    lock = FileLock(storage_path.with_suffix(".lock"))
+
+    with lock:
+        if storage_path.exists():
+            if _storage_state_is_valid(browser, storage_path):
+                return storage_path
+            storage_path.unlink(missing_ok=True)
+
+        user = test_users[profile_name]
+        _create_storage_state(browser, storage_path, user)
+
+    return storage_path
+
+
+@pytest.fixture()
+def notes_logged_in_page(
+    browser: Browser,
+    notes_auth_state: Path,
+    test_users: dict,
+    profile_name: str,
+) -> Iterator[HomePage]:
+    """Yield a HomePage that starts from an authenticated Notes context."""
+    storage_path = notes_auth_state
+    user = test_users[profile_name]
+    lock = FileLock(storage_path.with_suffix(".lock"))
+
+    def open_home_page() -> tuple[HomePage, Any]:
+        temp_context = browser.new_context(storage_state=storage_path)
+        block_ads_on_context(temp_context)
+        temp_page = temp_context.new_page()
+        temp_home_page = HomePage(temp_page)
+        temp_home_page.load()
+        return temp_home_page, temp_context
+
+    for attempt in range(2):
+        home_page, context = open_home_page()
+        page = home_page.page
+        try:
+            page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
+            home_page.logout_button.wait_for(state="visible", timeout=5_000)
+            break
+        except PlaywrightTimeoutError:
+            context.close()
+            if attempt == 1:
+                raise
+            with lock:
+                _create_storage_state(browser, storage_path, user)
+    else:  # pragma: no cover - defensive fallback, loop always breaks or raises
+        raise PlaywrightTimeoutError(
+            f"Could not navigate to {NOTES_HOME_URL} with refreshed storage state"
+        )
+
+    try:
+        yield home_page
+    finally:
+        context.close()
+
+
+# --- ui note cleanup --------------------------------------------------------
+@pytest.fixture
+def ui_note_cleanup(
+    notes_logged_in_page: HomePage, api_client_auth: ApiClient
+) -> Iterator[None]:
+    """Clean up notes created via the UI during a test using the API client."""
+
+    created_note_ids: set[str] = set()
+
+    def handle_response(response) -> None:
+        request = response.request
+        if request is None or request.method.upper() != "POST":
+            return
+        if "/notes/api/notes" not in response.url:
+            return
+
+        try:
+            payload = response.json()
+        except Exception:
+            return
+
+        note_id = payload.get("data", {}).get("id")
+        if note_id:
+            created_note_ids.add(note_id)
+
+    page = notes_logged_in_page.page
+    page.on("response", handle_response)
+
+    try:
+        yield
+    finally:
+        # Wait for in-flight responses to settle; use network-idle for robustness.
+        try:
+            page.wait_for_load_state("networkidle", timeout=5000)
+        except PlaywrightTimeoutError:
+            # If network-idle times out, fall back to a brief wait to allow last responses.
+            page.wait_for_timeout(1000)
+
+        page.remove_listener("response", handle_response)
+
+        note_ids_to_delete = created_note_ids.copy()
+        while note_ids_to_delete:
+            note_id = note_ids_to_delete.pop()
+            try:
+                api_client_auth.delete_note(note_id)
+            except requests.exceptions.HTTPError as exc:
+                if exc.response is None or exc.response.status_code not in {400, 404}:
+                    raise
+
+
+@pytest.fixture
+def ui_note_factory(
+    notes_logged_in_page: HomePage, ui_note_cleanup
+) -> Callable[..., dict[str, Any]]:
+    """Create notes through the UI and return the generated payload."""
+
+    def create_ui_note(
+        *,
+        title: str | None = None,
+        description: str | None = None,
+        category: str = "Home",
+        completed: bool = False,
+    ) -> dict[str, Any]:
+        generated_title = title or f"UI Auto Note {uuid4().hex[:8]}"
+        generated_description = description or f"UI Auto Description {uuid4().hex[:8]}"
+
+        notes_logged_in_page.create_note(
+            title=generated_title,
+            description=generated_description,
+            category=category,
+            completed=completed,
+        )
+
+        notes_logged_in_page.get_note_by_title(generated_title).wait_for(
+            state="visible"
+        )
+
+        return {
+            "title": generated_title,
+            "description": generated_description,
+            "category": category,
+            "completed": completed,
+        }
+
+    return create_ui_note
+
+
+# --- purge cached Notes auth state -----------------------------------------
+
+
+@pytest.fixture(scope="session", autouse=False)
+def notes_session_invalidator_cleanup() -> Iterator[None]:
+    """
+    Session-scoped cleanup that purges Notes auth state after all session invalidator tests.
+
+    This runs at the end of the test session to avoid race conditions with parallel tests.
+    """
+    try:
+        yield
+    finally:
+        _purge_all_notes_auth_states()
+
+
+# --- api testing fixtures -------------------------------------------------
 @pytest.fixture(
     scope="function"
 )  # isolate auth/token per test; switch to session for speed if safe
