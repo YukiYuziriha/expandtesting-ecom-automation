@@ -76,9 +76,6 @@ class HomePage(BasePage):
         target_card = self.get_note_by_title(title)
         target_card.get_by_test_id("note-delete").click()
 
-        # Wait for network to settle before checking for dialog
-        self.page.wait_for_load_state("networkidle")
-
         dialog = self.page.get_by_test_id("note-delete-dialog")
         dialog.wait_for(state="visible", timeout=10000)
 
