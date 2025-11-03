@@ -30,14 +30,25 @@ _test_note_ids: set[str] = set()
 
 # --- pytest-playwright plugin fixtures ---
 @pytest.fixture(scope="function")
-def browser_context_args(browser_context_args, notes_auth_state: Path):
-    """Inject storage_state into plugin-managed browser context."""
+def browser_context_args(browser_context_args, notes_auth_state: Path, request):
+    """Inject storage_state into plugin-managed browser context for UI tests only."""
+    # Only apply to tests marked with @pytest.mark.ui
+    if "ui" not in request.keywords:
+        return browser_context_args
+
+    # Skip authentication state for tests marked with @pytest.mark.no_auth
+    if "no_auth" in request.keywords:
+        return browser_context_args
+
     return {**browser_context_args, "storage_state": str(notes_auth_state)}
 
 
 @pytest.fixture(autouse=True)
-def _attach_adblock(context):
-    """Attach ad blocking to plugin-managed context."""
+def _attach_adblock(context, request):
+    """Attach ad blocking to plugin-managed context for UI tests only."""
+    # Only apply to tests marked with @pytest.mark.ui
+    if "ui" not in request.keywords:
+        return
     block_ads_on_context(context)
 
 
