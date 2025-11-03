@@ -104,9 +104,11 @@ class HomePage(BasePage):
 
         # Wait for the modal to be visible
         self.note_category.wait_for(state="visible")
+        self.note_completed.wait_for(state="attached", timeout=10000)
 
         # Fill the form
         self.note_category.select_option(new_category)
+
         if completed:
             self.note_completed.check()
         else:
