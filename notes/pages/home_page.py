@@ -1,4 +1,4 @@
-from playwright.sync_api import Page, Locator
+from playwright.sync_api import Page, Locator, TimeoutError as PlaywrightTimeoutError
 from notes.pages.base_page import BasePage
 
 
@@ -74,12 +74,27 @@ class HomePage(BasePage):
     def delete_note(self, title: str) -> None:
         """Delete the note whose card title matches ``title``."""
         target_card = self.get_note_by_title(title)
-        target_card.get_by_test_id("note-delete").click()
+        # Ensure the card and delete button are actionable before clicking
+        target_card.wait_for(state="visible")
+        delete_btn = target_card.get_by_test_id("note-delete")
+        delete_btn.wait_for(state="visible")
 
         dialog = self.page.get_by_test_id("note-delete-dialog")
-        dialog.wait_for(state="visible", timeout=10000)
 
-        dialog.get_by_test_id("note-delete-confirm").click()
+        # Click tied to dialog appearance; retry once if the click is swallowed
+        delete_btn.click()
+        try:
+            dialog.wait_for(state="visible", timeout=1500)
+        except PlaywrightTimeoutError:
+            # Re-resolve and retry once to avoid stale handle / swallowed click
+            delete_btn = self.get_note_by_title(title).get_by_test_id("note-delete")
+            delete_btn.wait_for(state="visible")
+            delete_btn.click()
+            dialog.wait_for(state="visible", timeout=5000)
+
+        confirm = dialog.get_by_test_id("note-delete-confirm")
+        confirm.wait_for(state="visible")
+        confirm.click()
         dialog.wait_for(state="hidden")
 
     def edit_note(
