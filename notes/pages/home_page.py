@@ -92,16 +92,19 @@ class HomePage(BasePage):
     ) -> None:
         """Edit the note whose card title matches ``title``."""
         target_card = self.get_note_by_title(title)
-
-        # Ensure the card and button are visible before clicking
         target_card.wait_for(state="visible")
+
         edit_button = target_card.get_by_test_id("note-edit")
         edit_button.wait_for(state="visible")
         edit_button.click()
 
-        # Wait for the modal to be visible
-        self.note_category.wait_for(state="visible")
-        self.note_completed.wait_for(state="attached", timeout=10000)
+        # Wait for the edit modal to be visible
+        # Use explicit timeout to match delete_note robustness
+        self.note_category.wait_for(state="visible", timeout=10000)
+        self.note_title.wait_for(state="visible", timeout=10000)
+        self.note_description.wait_for(state="visible", timeout=10000)
+        self.note_completed.wait_for(state="visible", timeout=10000)
+        self.note_submit.wait_for(state="visible", timeout=10000)
 
         # Fill the form
         self.note_category.select_option(new_category)
@@ -117,7 +120,7 @@ class HomePage(BasePage):
         self.note_submit.click()
 
         # Wait for the modal to close
-        self.note_submit.wait_for(state="hidden")
+        self.note_submit.wait_for(state="hidden", timeout=10000)
 
     def is_note_present(self, title: str) -> bool:
         """Return True if a note with the given title is visible on the page."""
