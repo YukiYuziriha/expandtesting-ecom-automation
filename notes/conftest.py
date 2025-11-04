@@ -344,14 +344,14 @@ NOTES_OFFLINE = os.getenv("NOTES_OFFLINE", "0") == "1"
 
 
 @pytest.fixture(autouse=True)
-def notes_api_mock(request) -> Iterator[None]:
-    """Mock Notes API when NOTES_OFFLINE=1 so tests run without network.
+def notes_api_mock(request: pytest.FixtureRequest) -> Iterator[None]:
+    """Mock Notes API when NOTES_OFFLINE=1 for API tests only.
 
-    Applies only to tests marked with @pytest.mark.notes. Always yields once,
-    even when mock is disabled, to satisfy generator fixture contract.
+    Scope: tests marked with both `@pytest.mark.notes` and `@pytest.mark.api`.
+    Always yields once even when mock is disabled to satisfy generator contract.
     """
-    # Only affect notes tests
-    if "notes" not in request.keywords:
+    # Only affect Notes API tests (avoid touching UI tests entirely)
+    if not ("notes" in request.keywords and "api" in request.keywords):
         yield
         return
 
