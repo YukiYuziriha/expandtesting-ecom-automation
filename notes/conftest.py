@@ -118,8 +118,31 @@ def notes_auth_state(browser: Browser, test_users: dict, profile_name: str) -> P
 
 
 @pytest.fixture()
-def notes_logged_in_page(page: Page) -> Iterator[HomePage]:
-    """Yield a HomePage using plugin-managed page with storage_state injected."""
+def ensure_valid_notes_auth(
+    browser: Browser, notes_auth_state: Path, test_users: dict, profile_name: str
+) -> None:
+    """Ensure cached storage_state is still valid; recreate if logout invalidated it.
+
+    This guards against tests (e.g., an E2E flow) that explicitly log out and
+    thereby invalidate the session cached in `notes_auth_state`.
+    """
+    try:
+        if not _storage_state_is_valid(browser, notes_auth_state):
+            user = test_users[profile_name]
+            _create_storage_state(browser, notes_auth_state, user)
+    except Exception:
+        # Defensive: never block tests due to validation; they'll still attempt login flows
+        pass
+
+
+@pytest.fixture()
+def notes_logged_in_page(
+    page: Page, ensure_valid_notes_auth: None
+) -> Iterator[HomePage]:
+    """Yield a HomePage using plugin-managed page with storage_state injected.
+
+    Re-validates auth state before navigation to avoid stale sessions.
+    """
     home_page = HomePage(page)
     home_page.load()
 

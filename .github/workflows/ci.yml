@@ -58,6 +58,7 @@ jobs:
       - name: Run bookstore E2E tests in parallel
         run: |
           pytest bookstore/tests/ -v \
+            -m "not quarantine" \
             --browser ${{ matrix.browser }} \
             --video on --tracing on \
             -n auto \
@@ -134,7 +135,7 @@ jobs:
         run: |
           mkdir -p test-results videos screenshots
           pytest notes/tests/ui/ -v \
-            -m "not seq_only" \
+            -m "not seq_only and not quarantine" \
             --profile profile1 \
             --browser ${{ matrix.browser }} \
             --video on --tracing on \
@@ -218,7 +219,7 @@ jobs:
         run: |
           mkdir -p test-results
           pytest notes/tests/ui/ -v \
-            -m "seq_only" \
+            -m "seq_only and not quarantine" \
             --profile ${{ matrix.profile }} \
             --browser ${{ matrix.browser }} \
             --video on --tracing on \
@@ -278,6 +279,7 @@ jobs:
       - name: Run notes API tests (full)
         run: |
           pytest notes/tests/api/ -v \
+            -m "not quarantine" \
             --randomly-seed=${{ github.run_number }}
 
       - name: Upload failure artifacts (notes-api)
@@ -342,7 +344,7 @@ jobs:
         run: |
           mkdir -p test-results
           pytest notes/tests/hybrid/ -v \
-            -m "hybrid" \
+            -m "hybrid and not quarantine" \
             --profile profile1 \
             --browser ${{ matrix.browser }} \
             --video on --tracing on \
@@ -407,7 +409,7 @@ jobs:
         run: |
           mkdir -p test-results
           pytest bookstore/tests/ -v \
-            -m "smoke and ui and not seq_only" \
+            -m "smoke and ui and not seq_only and not quarantine" \
             --browser chromium \
             --video on --tracing on \
             -n auto \
@@ -480,7 +482,7 @@ jobs:
         run: |
           mkdir -p test-results
           pytest notes/tests/ui/ -v \
-            -m "smoke and ui and not seq_only" \
+            -m "smoke and ui and not seq_only and not quarantine" \
             --browser chromium \
             --video on --tracing on \
             -n auto \
@@ -540,7 +542,7 @@ jobs:
         run: |
           mkdir -p test-results
           pytest notes/tests/api/ -v \
-            -m "smoke" \
+            -m "smoke and not quarantine" \
             --randomly-seed=${{ github.run_number }}
 
       - name: Upload failure artifacts (push notes api)

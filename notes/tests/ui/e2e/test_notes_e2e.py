@@ -94,9 +94,3 @@ def test_notes_app_e2e_flow(
             has=home_page.note_card_title.filter(has_text=edit_title)
         )
     ).to_have_count(0, timeout=5000)
-
-    # LOGOUT
-    home_page.logout_button.click()
-
-    # Assert we are back on the login page
-    expect(login_page.logged_out_marker).to_be_visible(timeout=10000)

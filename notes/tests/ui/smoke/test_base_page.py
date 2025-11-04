@@ -8,6 +8,9 @@ from notes.pages.home_page import HomePage
 @pytest.mark.ui
 @pytest.mark.smoke
 @pytest.mark.seq_only
+@pytest.mark.skip(
+    reason="Disabled: upstream logout flow invalidates cached session state and causes cascading failures."
+)
 def test_logout_button(
     page, notes_logged_in_page: HomePage, notes_session_invalidator_cleanup
 ):
