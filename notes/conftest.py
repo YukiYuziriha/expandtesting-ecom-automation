@@ -33,7 +33,7 @@ _test_note_ids: set[str] = set()
 def browser_context_args(browser_context_args, notes_auth_state: Path, request):
     """Inject storage_state into plugin-managed browser context for UI tests only."""
     # Only apply to tests marked with @pytest.mark.ui
-    if "ui" not in request.keywords:
+    if "ui" not in request.keywords and "hybrid" not in request.keywords:
         return browser_context_args
 
     # Skip authentication state for tests marked with @pytest.mark.no_auth

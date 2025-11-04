@@ -10,6 +10,7 @@ from notes.pages.login_page import LoginPage
 @pytest.mark.ui
 @pytest.mark.e2e
 @pytest.mark.seq_only
+@pytest.mark.no_auth
 def test_notes_app_e2e_flow(
     page: Page, test_users: dict, profile_name: str, notes_session_invalidator_cleanup
 ) -> None:
