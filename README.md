@@ -134,11 +134,11 @@ pytest -k login --profile=profile2
   - Notes API smoke (no browser dependency).
 - Pull Request (full): complete coverage
   - Bookstore UI on Chromium + Firefox in parallel.
-  - Notes UI in two phases: (1) parallel matrix for all non‑`seq_only`, then (2) `seq_only` tests sequentially (Firefox → Chromium).
+  - Notes UI runs two matrices concurrently: (1) parallel matrix for all non‑`seq_only` with `--profile profile1`, and (2) a sequential matrix for `seq_only` (Firefox → `profile2`, Chromium → `profile3`).
   - Notes API full.
 - Artifacts: for any failure, CI uploads Playwright traces, videos, and screenshots for fast debugging.
 
-Why: Short push runs keep iteration snappy and reduce exposure to third‑party flakiness. PRs get full, multi‑browser confidence. `seq_only` groups flows like logout that can temporarily invalidate sessions across contexts when run in parallel.
+Why: Short push runs keep iteration snappy and reduce exposure to third‑party flakiness. PRs get full, multi‑browser confidence. `seq_only` groups flows like logout can invalidate sessions; running them concurrently in a separate matrix with distinct user profiles preserves isolation while reducing wall‑clock time.
 
 Details: see docs/decisions/ci-operations.md and docs/decisions/notes-app-session-behavior.md
 

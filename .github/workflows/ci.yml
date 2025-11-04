@@ -135,6 +135,7 @@ jobs:
           mkdir -p test-results videos screenshots
           pytest notes/tests/ui/ -v \
             -m "not seq_only" \
+            --profile profile1 \
             --browser ${{ matrix.browser }} \
             --video on --tracing on \
             -n auto \
@@ -161,12 +162,21 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  test-notes-seq-firefox:
-    if: ${{ github.event_name == 'pull_request' && always() }}
-    needs: [test-notes-parallel]
+  # PR-only: Notes UI sequential tests in a concurrent matrix (runs alongside parallel matrix)
+  test-notes-seq:
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-22.04
     env:
       TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
+    strategy:
+      matrix:
+        include:
+          - browser: firefox
+            profile: profile2
+          - browser: chromium
+            profile: profile3
+      fail-fast: false
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -184,17 +194,17 @@ jobs:
           path: |
             ~/.cache/ms-playwright
             ~/.cache/playwright
-          key: playwright-${{ runner.os }}-firefox-${{ hashFiles('requirements.txt') }}
+          key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('requirements.txt') }}
           restore-keys: |
-            playwright-${{ runner.os }}-firefox-
+            playwright-${{ runner.os }}-${{ matrix.browser }}-
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install Playwright browsers + system deps (firefox)
-        run: python -m playwright install --with-deps firefox
+      - name: Install Playwright browsers + system deps
+        run: python -m playwright install --with-deps ${{ matrix.browser }}
 
       - name: Lint and format check
         run: |
@@ -204,16 +214,17 @@ jobs:
       - name: Type check
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
 
-      - name: Run notes sequential tests (firefox)
+      - name: Run notes sequential tests (${{ matrix.browser }})
         run: |
           mkdir -p test-results
           pytest notes/tests/ui/ -v \
             -m "seq_only" \
-            --browser firefox \
+            --profile ${{ matrix.profile }} \
+            --browser ${{ matrix.browser }} \
             --video on --tracing on \
             --randomly-seed=${{ github.run_number }}
 
-      - name: Collect sequential test artifacts (firefox)
+      - name: Collect sequential test artifacts (${{ matrix.browser }})
         if: failure()
         run: |
           mkdir -p test-results
@@ -221,83 +232,11 @@ jobs:
             find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
           fi
 
-      - name: Upload failure artifacts (firefox)
+      - name: Upload failure artifacts (${{ matrix.browser }})
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: notes-seq-failure-artifacts-firefox
-          path: |
-            test-results/
-            videos/
-            screenshots/
-          if-no-files-found: ignore
-          retention-days: 7
-
-  test-notes-seq-chromium:
-    if: ${{ github.event_name == 'pull_request' && always() }}
-    needs: [test-notes-parallel, test-notes-seq-firefox]
-    runs-on: ubuntu-22.04
-    env:
-      TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-          cache-dependency-path: requirements.txt
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/ms-playwright
-            ~/.cache/playwright
-          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            playwright-${{ runner.os }}-chromium-
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Install Playwright browsers + system deps (chromium)
-        run: python -m playwright install --with-deps chromium
-
-      - name: Lint and format check
-        run: |
-          ruff check .
-          ruff format --check .
-
-      - name: Type check
-        run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
-
-      - name: Run notes sequential tests (chromium)
-        run: |
-          mkdir -p test-results
-          pytest notes/tests/ui/ -v \
-            -m "seq_only" \
-            --browser chromium \
-            --video on --tracing on \
-            --randomly-seed=${{ github.run_number }}
-
-      - name: Collect sequential test artifacts (chromium)
-        if: failure()
-        run: |
-          mkdir -p test-results
-          if [ -d ".pytest-playwright" ]; then
-            find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
-          fi
-
-      - name: Upload failure artifacts (chromium)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: notes-seq-failure-artifacts-chromium
+          name: notes-seq-failure-artifacts-${{ matrix.browser }}
           path: |
             test-results/
             videos/

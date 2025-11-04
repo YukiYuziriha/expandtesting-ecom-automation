@@ -14,10 +14,10 @@
 
 - Policy & Mitigation
   - Tests that perform logout or otherwise invalidate session state are annotated with `@pytest.mark.seq_only` to signal they must not run concurrently with other UI tests.
-  - CI sequencing for Notes UI:
-    1) Run all non-`seq_only` tests in a browser matrix (Chromium + Firefox) with `-n auto` for maximal throughput.
-    2) After the matrix completes, run `seq_only` tests sequentially on Firefox first, then Chromium.
-  - This preserves parallel speed for safe flows and isolates state-invalidating flows to eliminate cross-test interference.
+  - CI execution for Notes UI uses concurrent matrices with isolated users:
+    1) Run all non-`seq_only` tests in a browser matrix (Chromium + Firefox) with `-n auto` and `--profile profile1`.
+    2) In parallel, run `seq_only` tests in a second matrix, sequentially within each job, using distinct profiles per browser (Firefox → `profile2`, Chromium → `profile3`).
+  - This preserves parallel speed and removes cross-test interference by isolating potentially state-invalidating flows with separate accounts.
 
 - Additional Safeguards
   - Ad-blocking is attached only for UI-marked tests to reduce external noise; API tests do not initialize Playwright.
@@ -25,6 +25,5 @@
   - Order randomization (`pytest-randomly`) remains enabled to highlight latent dependencies outside of `seq_only` constraints.
 
 - Future Considerations
-  - If upstream session handling becomes strictly context-bound, we can revisit removing the `seq_only` group and the sequential CI phase.
+  - If upstream session handling becomes strictly context-bound, we can revisit merging the sequential leg back under the parallel matrix.
   - Synthetic test users or environment controls may further reduce the incidence of shared-session effects.
-
