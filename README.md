@@ -135,6 +135,7 @@ pytest -k login --profile=profile2
 - Pull Request (full): complete coverage
   - Bookstore UI on Chromium + Firefox in parallel.
   - Notes UI runs two matrices concurrently: (1) parallel matrix for all non‑`seq_only` with `--profile profile1`, and (2) a sequential matrix for `seq_only` (Firefox → `profile2`, Chromium → `profile3`).
+  - Notes Hybrid UI+API runs as a dedicated job concurrently (Chromium + Firefox), filtered with `-m "hybrid"`, using `--profile profile1`.
   - Notes API full.
 - Artifacts: for any failure, CI uploads Playwright traces, videos, and screenshots for fast debugging.
 

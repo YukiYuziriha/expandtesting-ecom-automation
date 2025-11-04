@@ -14,6 +14,7 @@
   - pull_request → main: run full suite
     - Bookstore UI: matrix over `chromium` and `firefox`.
     - Notes UI: run two matrices concurrently — (1) parallel matrix for non-`seq_only`, and (2) sequential matrix for `seq_only` — using isolated user profiles per leg.
+    - Notes Hybrid UI+API: dedicated two‑browser matrix running `notes/tests/hybrid/` with `-m "hybrid"` in parallel with other jobs.
     - Notes API: full suite.
 
 - Browser Matrix and Sequencing
@@ -22,6 +23,7 @@
     1) Parallel matrix (Chromium + Firefox): `-m "not seq_only"` with `-n auto`, `--profile profile1`.
     2) Sequential matrix (Chromium + Firefox): `-m "seq_only"` with no `-n`, using distinct profiles per browser (e.g., Firefox → `--profile profile2`, Chromium → `--profile profile3`).
     - Rationale: Notes logout flow can invalidate sessions across contexts intermittently. Running seq_only in their own matrix with distinct test users removes cross-talk while enabling both matrices to run at the same time for reduced wall‑clock.
+  - Notes Hybrid: explicit job `test-notes-hybrid` runs concurrently to showcase cross‑layer validation without impacting smoke or seq_only. Uses `--profile profile1` and browser matrix over Chromium + Firefox.
 
 - Artifacts & Diagnostics
   - On any failure, upload Playwright traces, videos, screenshots, and `test-results/` across all jobs.

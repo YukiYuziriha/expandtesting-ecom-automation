@@ -10,6 +10,8 @@ from notes.helpers.api_client import ApiClient
 
 
 @pytest.mark.notes
+@pytest.mark.ui
+@pytest.mark.api
 @pytest.mark.e2e
 @pytest.mark.hybrid
 @pytest.mark.skipif(
@@ -22,9 +24,7 @@ def test_notes_hybrid_ui_api_flow(
     note_cleanup,
 ) -> None:
     """
-    Hybrid E2E: Seed via API, verify/mutate via UI, mutate via API, verify via UI, delete via UI.
-
-    Assertions live in the POM; tests do not use raw locators.
+    Hybrid E2E: Seed via API, verify/mutate via UI, mutate via API, verify via UI, delete via UI with API 404.
     """
 
     # Seed via API
