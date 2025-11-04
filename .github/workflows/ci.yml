@@ -63,6 +63,14 @@ jobs:
             -n auto \
             --randomly-seed=${{ github.run_number }}
 
+      - name: Collect artifacts (bookstore)
+        if: failure()
+        run: |
+          mkdir -p test-results
+          if [ -d ".pytest-playwright" ]; then
+            find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
+          fi
+
       - name: Upload failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
@@ -72,6 +80,7 @@ jobs:
             test-results/
             videos/
             screenshots/
+          if-no-files-found: ignore
 
   # PR-only: Notes UI parallel matrix, then gated sequential firefox -> chromium
   test-notes-parallel:
@@ -319,9 +328,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install Playwright browsers + system deps (chromium)
-        run: python -m playwright install --with-deps chromium
-
       - name: Lint and format check
         run: |
           ruff check notes/tests/api/
@@ -512,9 +518,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      - name: Install Playwright browsers + system deps (chromium)
-        run: python -m playwright install --with-deps chromium
 
       - name: Lint and format check (notes api)
         run: |
