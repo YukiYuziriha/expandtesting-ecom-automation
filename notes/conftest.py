@@ -199,56 +199,90 @@ def cleanup_all_test_notes(
 def ui_note_cleanup(
     notes_logged_in_page: HomePage, api_client_auth: ApiClient
 ) -> Iterator[None]:
-    """Clean up notes created via the UI during a test using the API client."""
+    """Track UI-created notes and delete them deterministically via the API.
+
+    Implementation details:
+    - Track only POST /notes/api/notes requests and collect created note IDs
+      from their JSON responses.
+    - Track in-flight create requests and wait for them to finish using
+      requestfinished events instead of generic networkidle or sleeps.
+    """
 
     created_note_ids: set[str] = set()
+    pending_create_requests: set[object] = set()
 
-    def handle_response(response) -> None:
-        request = response.request
-        if request is None or request.method.upper() != "POST":
-            return
-        if "/notes/api/notes" not in response.url:
-            return
-
+    def is_create_request(req) -> bool:
         try:
-            payload = response.json()
+            return req.method.upper() == "POST" and "/notes/api/notes" in req.url
         except Exception:
-            return
+            return False
 
-        note_id = payload.get("data", {}).get("id")
-        if note_id:
-            created_note_ids.add(note_id)
-            _test_note_ids.add(note_id)  # Add to global registry for session cleanup
+    def on_request(req) -> None:
+        if is_create_request(req):
+            pending_create_requests.add(req)
+
+    def on_response(resp) -> None:
+        req = getattr(resp, "request", None)
+        if req is None or not is_create_request(req):
+            return
+        try:
+            payload = resp.json()
+            note_id = payload.get("data", {}).get("id")
+            if note_id:
+                created_note_ids.add(note_id)
+                _test_note_ids.add(note_id)  # also add to session registry
+        except Exception:
+            # Ignore non-JSON or unexpected payloads
+            pass
+
+    def on_requestfinished(req) -> None:
+        if is_create_request(req):
+            pending_create_requests.discard(req)
+
+    def on_requestfailed(req) -> None:
+        if is_create_request(req):
+            pending_create_requests.discard(req)
 
     page = notes_logged_in_page.page
-    page.on("response", handle_response)
+    page.on("request", on_request)
+    page.on("response", on_response)
+    page.on("requestfinished", on_requestfinished)
+    page.on("requestfailed", on_requestfailed)
 
     try:
         yield
     finally:
-        # Wait for in-flight responses to settle; use network-idle for robustness.
+        # Wait until all tracked create requests finish (event-driven, no sleeps)
         try:
-            page.wait_for_load_state("networkidle", timeout=5000)
-        except PlaywrightTimeoutError:
-            # If network-idle times out, fall back to a brief wait to allow last responses.
-            page.wait_for_timeout(1000)
+            deadline_ms = 5000
+            while pending_create_requests and deadline_ms > 0:
+                try:
+                    page.wait_for_event("requestfinished", timeout=500)
+                except PlaywrightTimeoutError:
+                    # No relevant events; reduce remaining time
+                    pass
+                deadline_ms -= 500
+        except Exception:
+            pass
 
-        page.remove_listener("response", handle_response)
+        page.remove_listener("request", on_request)
+        page.remove_listener("response", on_response)
+        page.remove_listener("requestfinished", on_requestfinished)
+        page.remove_listener("requestfailed", on_requestfailed)
 
+        # Best-effort deletion via API
         note_ids_to_delete = created_note_ids.copy()
         while note_ids_to_delete:
             note_id = note_ids_to_delete.pop()
             try:
                 api_client_auth.delete_note(note_id)
-                _test_note_ids.discard(
-                    note_id
-                )  # Remove from global if successfully deleted
+                _test_note_ids.discard(note_id)
             except requests.exceptions.HTTPError as exc:
                 if exc.response is None or exc.response.status_code not in {400, 404}:
-                    # Note still exists, keep in global registry for session cleanup
+                    # Non-ignorable error: leave for session-level cleanup
                     pass
             except Exception:
-                # Keep in global registry for session cleanup
+                # Leave for session-level cleanup
                 pass
 
 
