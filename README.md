@@ -26,7 +26,7 @@ This isn't just a collection of test scripts; it's a demonstration of a professi
 | **Page Object Model (POM)** | Strict separation of concerns. Tests contain workflows and assertions; Page Objects contain locators and actions. This makes tests readable and the framework easy to maintain.                                                                                                    |
 | **Cached Authentication** | A session-scoped Pytest fixture logs in **once per session**, saving the state to a file. Each test then creates a new, isolated browser context from this state, achieving both **speed and 100% test isolation**.                                                                  |
 | **Resilient Locators** | The locator strategy is anchored to the **most stable attributes** of the DOM—those that define an element's *purpose*, not its appearance. This means prioritizing semantic HTML (`form`, `button[type='submit']`), accessibility contracts (`aria-label`), and developer test hooks (`data-testid`) over brittle selectors like CSS classes or UI text. |
-| **CI/CD Pipeline** | A GitHub Actions workflow runs on every push and PR, executing the full E2E suite in parallel across Chromium and Firefox. It includes linting (`ruff`) and type-checking (`mypy`) gates.                                                                                             |
+| **CI/CD Pipeline** | PRs run the full E2E suite in a two‑browser matrix (Chromium + Firefox). Pushes run a fast smoke subset on a single browser (Chromium) to keep feedback under ~6 minutes. All jobs upload trace/video artifacts on failure. Linting (`ruff`) and type‑checking (`mypy`) gate regressions. |
 | **Observability** | On test failure, the CI pipeline automatically uploads **video recordings**, **Playwright traces**, and **screenshots** as artifacts, enabling rapid, precise debugging without needing to re-run locally.                                                                          |
 | **Ad & Tracker Blocking** | A layered defense combines network-level request blocking with DOM-level ad dismissal to create a stable, noise-free test environment.                                                                                                                                                      |
 | **Marker-Driven Suites** | All tests are tagged with pytest markers (`smoke`, `ui`, `api`, `e2e`, `bookstore`, `notes`) so CI can run targeted suites and developers can slice the matrix locally with a single flag. |
@@ -101,8 +101,12 @@ The mock is **automatically enabled when `NOTES_OFFLINE=1`** and only affects te
 ### **3. Running Tests**
 
 ```bash
-# Run all tests in parallel (headless)
-pytest tests/ -v -n auto
+# Recommended full run (flakiness-aware)
+# 1) Run non-sequential tests in parallel for speed
+pytest -m "not seq_only" -v -n auto
+
+# 2) Then run sequential-only tests (these can invalidate global session state)
+pytest -m "seq_only" -v
 
 # Run only smoke checks (bookstore UI + notes API)
 pytest -m "smoke"
@@ -112,7 +116,7 @@ pytest -m "bookstore and ui"
 pytest -m "notes and api"
 
 # Run tests in a specific file (headed, for debugging)
-pytest tests/test_purchase_journey.py --headed
+pytest bookstore/tests/test_purchase_journey.py --headed
 
 # Run tests only in a specific browser
 pytest tests/ -v --browser firefox
@@ -122,6 +126,21 @@ pytest -k login --profile=profile2
 ```
 
 -----
+
+## 🧭 CI at a Glance
+
+- Push (fast): smoke tests only
+  - Bookstore UI and Notes UI on a single browser (Chromium), parallelized, excluding `seq_only` to avoid session cross‑talk.
+  - Notes API smoke (no browser dependency).
+- Pull Request (full): complete coverage
+  - Bookstore UI on Chromium + Firefox in parallel.
+  - Notes UI in two phases: (1) parallel matrix for all non‑`seq_only`, then (2) `seq_only` tests sequentially (Firefox → Chromium).
+  - Notes API full.
+- Artifacts: for any failure, CI uploads Playwright traces, videos, and screenshots for fast debugging.
+
+Why: Short push runs keep iteration snappy and reduce exposure to third‑party flakiness. PRs get full, multi‑browser confidence. `seq_only` groups flows like logout that can temporarily invalidate sessions across contexts when run in parallel.
+
+Details: see docs/decisions/ci-operations.md and docs/decisions/notes-app-session-behavior.md
 
 ## 📺 Live Demo
 

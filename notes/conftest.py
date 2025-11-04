@@ -7,7 +7,7 @@ import json
 import re
 from datetime import datetime, timezone
 from urllib.parse import parse_qsl
-from playwright.sync_api import Browser, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import Browser, TimeoutError as PlaywrightTimeoutError, Page
 from pathlib import Path
 from filelock import FileLock
 import pytest
@@ -23,6 +23,39 @@ from shared.helpers.ad_blocker import block_ads_on_context
 NOTES_AUTH_DIR = Path(".auth/notes")
 NOTES_AUTH_DIR.mkdir(parents=True, exist_ok=True)
 NOTES_HOME_URL = HomePage.URL
+
+# Global registry to track all notes created during test session
+_test_note_ids: set[str] = set()
+
+
+# --- pytest-playwright plugin fixtures ---
+@pytest.fixture(scope="function")
+def browser_context_args(browser_context_args, notes_auth_state: Path, request):
+    """Inject storage_state into plugin-managed browser context for UI tests only."""
+    # Only apply to tests marked with @pytest.mark.ui
+    if "ui" not in request.keywords:
+        return browser_context_args
+
+    # Skip authentication state for tests marked with @pytest.mark.no_auth
+    if "no_auth" in request.keywords:
+        return browser_context_args
+
+    return {**browser_context_args, "storage_state": str(notes_auth_state)}
+
+
+@pytest.fixture(autouse=True)
+def _attach_adblock(request: pytest.FixtureRequest):
+    """Attach ad blocking to plugin-managed context for UI tests only.
+
+    Important: avoid resolving Playwright fixtures for non-UI tests. We fetch
+    `context` only when the test is marked with `@pytest.mark.ui`.
+    """
+    # Only apply to tests marked with @pytest.mark.ui
+    if "ui" not in request.keywords:
+        return
+    # Lazily resolve the Playwright context only for UI tests
+    context = request.getfixturevalue("context")
+    block_ads_on_context(context)
 
 
 def _purge_all_notes_auth_states() -> None:
@@ -85,47 +118,57 @@ def notes_auth_state(browser: Browser, test_users: dict, profile_name: str) -> P
 
 
 @pytest.fixture()
-def notes_logged_in_page(
-    browser: Browser,
-    notes_auth_state: Path,
-    test_users: dict,
-    profile_name: str,
-) -> Iterator[HomePage]:
-    """Yield a HomePage that starts from an authenticated Notes context."""
-    storage_path = notes_auth_state
-    user = test_users[profile_name]
-    lock = FileLock(storage_path.with_suffix(".lock"))
+def notes_logged_in_page(page: Page) -> Iterator[HomePage]:
+    """Yield a HomePage using plugin-managed page with storage_state injected."""
+    home_page = HomePage(page)
+    home_page.load()
 
-    def open_home_page() -> tuple[HomePage, Any]:
-        temp_context = browser.new_context(storage_state=storage_path)
-        block_ads_on_context(temp_context)
-        temp_page = temp_context.new_page()
-        temp_home_page = HomePage(temp_page)
-        temp_home_page.load()
-        return temp_home_page, temp_context
-
-    for attempt in range(2):
-        home_page, context = open_home_page()
-        page = home_page.page
-        try:
-            page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
-            home_page.logout_button.wait_for(state="visible", timeout=5_000)
-            break
-        except PlaywrightTimeoutError:
-            context.close()
-            if attempt == 1:
-                raise
-            with lock:
-                _create_storage_state(browser, storage_path, user)
-    else:  # pragma: no cover - defensive fallback, loop always breaks or raises
-        raise PlaywrightTimeoutError(
-            f"Could not navigate to {NOTES_HOME_URL} with refreshed storage state"
-        )
+    # Wait for page to be ready
+    page.wait_for_url(f"**{NOTES_HOME_URL}**", timeout=10_000)
+    home_page.logout_button.wait_for(state="attached", timeout=10_000)
 
     try:
         yield home_page
     finally:
-        context.close()
+        # Plugin closes page/context automatically
+        pass
+
+
+# --- session-scoped cleanup fixture ---
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_all_test_notes(
+    request: pytest.FixtureRequest,
+) -> Iterator[None]:
+    """
+    Session-scoped fixture that runs AFTER all tests and deletes ALL notes created.
+    This is the final safety net to ensure no test data is left behind.
+    """
+    yield  # Let all tests run first
+
+    # After all tests complete, clean up everything
+    if not _test_note_ids:
+        return
+
+    # Get a fresh API client for cleanup
+    try:
+        test_users = request.getfixturevalue("test_users")
+        profile_name = request.getfixturevalue("profile_name")
+        user = test_users[profile_name]
+    except Exception:
+        return  # Can't get test users, skip cleanup
+
+    cleanup_client = ApiClient(BASE_URL_API)
+    try:
+        cleanup_client.login_user(user["email"], user["password"])
+    except Exception:
+        return  # Can't authenticate, skip cleanup
+
+    # Delete all tracked notes
+    for note_id in _test_note_ids:
+        try:
+            cleanup_client.delete_note(note_id)
+        except Exception:
+            pass  # Best effort
 
 
 # --- ui note cleanup --------------------------------------------------------
@@ -152,6 +195,7 @@ def ui_note_cleanup(
         note_id = payload.get("data", {}).get("id")
         if note_id:
             created_note_ids.add(note_id)
+            _test_note_ids.add(note_id)  # Add to global registry for session cleanup
 
     page = notes_logged_in_page.page
     page.on("response", handle_response)
@@ -173,9 +217,16 @@ def ui_note_cleanup(
             note_id = note_ids_to_delete.pop()
             try:
                 api_client_auth.delete_note(note_id)
+                _test_note_ids.discard(
+                    note_id
+                )  # Remove from global if successfully deleted
             except requests.exceptions.HTTPError as exc:
                 if exc.response is None or exc.response.status_code not in {400, 404}:
-                    raise
+                    # Note still exists, keep in global registry for session cleanup
+                    pass
+            except Exception:
+                # Keep in global registry for session cleanup
+                pass
 
 
 @pytest.fixture
@@ -293,14 +344,14 @@ NOTES_OFFLINE = os.getenv("NOTES_OFFLINE", "0") == "1"
 
 
 @pytest.fixture(autouse=True)
-def notes_api_mock(request) -> Iterator[None]:
-    """Mock Notes API when NOTES_OFFLINE=1 so tests run without network.
+def notes_api_mock(request: pytest.FixtureRequest) -> Iterator[None]:
+    """Mock Notes API when NOTES_OFFLINE=1 for API tests only.
 
-    Applies only to tests marked with @pytest.mark.notes. Always yields once,
-    even when mock is disabled, to satisfy generator fixture contract.
+    Scope: tests marked with both `@pytest.mark.notes` and `@pytest.mark.api`.
+    Always yields once even when mock is disabled to satisfy generator contract.
     """
-    # Only affect notes tests
-    if "notes" not in request.keywords:
+    # Only affect Notes API tests (avoid touching UI tests entirely)
+    if not ("notes" in request.keywords and "api" in request.keywords):
         yield
         return
 

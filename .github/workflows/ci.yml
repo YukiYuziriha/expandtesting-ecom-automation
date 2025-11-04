@@ -7,7 +7,9 @@ on:
     branches: [main]
 
 jobs:
+  # PR-only full matrix for Bookstore UI
   test-bookstore:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-22.04
     env:
       TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
@@ -61,6 +63,14 @@ jobs:
             -n auto \
             --randomly-seed=${{ github.run_number }}
 
+      - name: Collect artifacts (bookstore)
+        if: failure()
+        run: |
+          mkdir -p test-results
+          if [ -d ".pytest-playwright" ]; then
+            find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
+          fi
+
       - name: Upload failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
@@ -70,8 +80,11 @@ jobs:
             test-results/
             videos/
             screenshots/
+          if-no-files-found: ignore
 
-  test-notes:
+  # PR-only: Notes UI parallel matrix, then gated sequential firefox -> chromium
+  test-notes-parallel:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-22.04
     env:
       TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
@@ -127,28 +140,11 @@ jobs:
             -n auto \
             --randomly-seed=${{ github.run_number }}
 
-      - name: Run notes sequential tests (session invalidators)
-        run: |
-          pytest notes/tests/ui/ -v \
-            -m "seq_only" \
-            --browser ${{ matrix.browser }} \
-            --video on --tracing on \
-            --randomly-seed=${{ github.run_number }}
-
-      - name: Collect sequential test artifacts
+      # Collect artifacts from parallel tests
+      - name: Collect parallel test artifacts
         if: failure()
         run: |
           mkdir -p test-results
-          # Copy pytest-playwright artifacts to test-results
-          if [ -d ".pytest-playwright" ]; then
-            find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
-          fi
-
-      - name: Collect test artifacts
-        if: failure()
-        run: |
-          mkdir -p test-results
-          # Copy pytest-playwright artifacts to test-results
           if [ -d ".pytest-playwright" ]; then
             find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
           fi
@@ -157,7 +153,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: notes-failure-artifacts-${{ matrix.browser }}
+          name: notes-parallel-failure-artifacts-${{ matrix.browser }}
           path: |
             test-results/
             videos/
@@ -165,7 +161,153 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  test-notes-seq-firefox:
+    if: ${{ github.event_name == 'pull_request' && always() }}
+    needs: [test-notes-parallel]
+    runs-on: ubuntu-22.04
+    env:
+      TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/.cache/playwright
+          key: playwright-${{ runner.os }}-firefox-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-firefox-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright browsers + system deps (firefox)
+        run: python -m playwright install --with-deps firefox
+
+      - name: Lint and format check
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Type check
+        run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
+
+      - name: Run notes sequential tests (firefox)
+        run: |
+          mkdir -p test-results
+          pytest notes/tests/ui/ -v \
+            -m "seq_only" \
+            --browser firefox \
+            --video on --tracing on \
+            --randomly-seed=${{ github.run_number }}
+
+      - name: Collect sequential test artifacts (firefox)
+        if: failure()
+        run: |
+          mkdir -p test-results
+          if [ -d ".pytest-playwright" ]; then
+            find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
+          fi
+
+      - name: Upload failure artifacts (firefox)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notes-seq-failure-artifacts-firefox
+          path: |
+            test-results/
+            videos/
+            screenshots/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  test-notes-seq-chromium:
+    if: ${{ github.event_name == 'pull_request' && always() }}
+    needs: [test-notes-parallel, test-notes-seq-firefox]
+    runs-on: ubuntu-22.04
+    env:
+      TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/.cache/playwright
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-chromium-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright browsers + system deps (chromium)
+        run: python -m playwright install --with-deps chromium
+
+      - name: Lint and format check
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Type check
+        run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
+
+      - name: Run notes sequential tests (chromium)
+        run: |
+          mkdir -p test-results
+          pytest notes/tests/ui/ -v \
+            -m "seq_only" \
+            --browser chromium \
+            --video on --tracing on \
+            --randomly-seed=${{ github.run_number }}
+
+      - name: Collect sequential test artifacts (chromium)
+        if: failure()
+        run: |
+          mkdir -p test-results
+          if [ -d ".pytest-playwright" ]; then
+            find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
+          fi
+
+      - name: Upload failure artifacts (chromium)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notes-seq-failure-artifacts-chromium
+          path: |
+            test-results/
+            videos/
+            screenshots/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # PR-only: Notes API (full)
   test-notes-api:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-22.04
     env:
       TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
@@ -194,7 +336,210 @@ jobs:
       - name: Type check
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases notes/tests/api/
 
-      - name: Run notes API tests
+      - name: Run notes API tests (full)
         run: |
           pytest notes/tests/api/ -v \
             --randomly-seed=${{ github.run_number }}
+
+      - name: Upload failure artifacts (notes-api)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notes-api-failure-artifacts
+          path: |
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # PUSH-only: Bookstore UI smoke on single browser (parallel), exclude seq_only
+  push-bookstore-smoke:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-22.04
+    env:
+      TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/.cache/playwright
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-chromium-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright browsers + system deps (chromium)
+        run: python -m playwright install --with-deps chromium
+
+      - name: Lint and format check
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Type check
+        run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
+
+      - name: Run bookstore UI smoke (push)
+        run: |
+          mkdir -p test-results
+          pytest bookstore/tests/ -v \
+            -m "smoke and ui and not seq_only" \
+            --browser chromium \
+            --video on --tracing on \
+            -n auto \
+            --randomly-seed=${{ github.run_number }}
+
+      - name: Collect artifacts (push bookstore)
+        if: failure()
+        run: |
+          mkdir -p test-results
+          if [ -d ".pytest-playwright" ]; then
+            find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
+          fi
+
+      - name: Upload failure artifacts (push bookstore)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: push-bookstore-failure-artifacts
+          path: |
+            test-results/
+            videos/
+            screenshots/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # PUSH-only: Notes UI smoke on single browser (parallel), exclude seq_only
+  push-notes-smoke-ui:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-22.04
+    env:
+      TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/.cache/playwright
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-chromium-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright browsers + system deps (chromium)
+        run: python -m playwright install --with-deps chromium
+
+      - name: Lint and format check
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Type check
+        run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
+
+      - name: Run notes UI smoke (push)
+        run: |
+          mkdir -p test-results
+          pytest notes/tests/ui/ -v \
+            -m "smoke and ui and not seq_only" \
+            --browser chromium \
+            --video on --tracing on \
+            -n auto \
+            --randomly-seed=${{ github.run_number }}
+
+      - name: Collect artifacts (push notes ui)
+        if: failure()
+        run: |
+          mkdir -p test-results
+          if [ -d ".pytest-playwright" ]; then
+            find .pytest-playwright -type f \( -name "*.webm" -o -name "*.zip" \) -exec cp {} test-results/ \;
+          fi
+
+      - name: Upload failure artifacts (push notes ui)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: push-notes-ui-failure-artifacts
+          path: |
+            test-results/
+            videos/
+            screenshots/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # PUSH-only: Notes API smoke
+  push-notes-smoke-api:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-22.04
+    env:
+      TEST_USERS_JSON: ${{ secrets.TEST_USERS_JSON }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint and format check (notes api)
+        run: |
+          ruff check notes/tests/api/
+          ruff format --check notes/tests/api/
+
+      - name: Type check (notes api)
+        run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases notes/tests/api/
+
+      - name: Run notes API smoke (push)
+        run: |
+          mkdir -p test-results
+          pytest notes/tests/api/ -v \
+            -m "smoke" \
+            --randomly-seed=${{ github.run_number }}
+
+      - name: Upload failure artifacts (push notes api)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: push-notes-api-failure-artifacts
+          path: |
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7

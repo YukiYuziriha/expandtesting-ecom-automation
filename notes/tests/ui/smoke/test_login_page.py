@@ -6,6 +6,7 @@ from notes.pages.login_page import LoginPage
 @pytest.mark.notes
 @pytest.mark.ui
 @pytest.mark.smoke
+@pytest.mark.no_auth
 def test_valid_credentials(page: Page, test_users: dict, profile_name: str) -> None:
     login_page = LoginPage(page)
     login_page.load()
@@ -20,6 +21,7 @@ def test_valid_credentials(page: Page, test_users: dict, profile_name: str) -> N
 @pytest.mark.notes
 @pytest.mark.ui
 @pytest.mark.smoke
+@pytest.mark.no_auth
 def test_invalid_credentials(page: Page) -> None:
     login_page = LoginPage(page)
     login_page.load()
