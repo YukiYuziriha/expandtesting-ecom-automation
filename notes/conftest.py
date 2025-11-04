@@ -44,11 +44,17 @@ def browser_context_args(browser_context_args, notes_auth_state: Path, request):
 
 
 @pytest.fixture(autouse=True)
-def _attach_adblock(context, request):
-    """Attach ad blocking to plugin-managed context for UI tests only."""
+def _attach_adblock(request: pytest.FixtureRequest):
+    """Attach ad blocking to plugin-managed context for UI tests only.
+
+    Important: avoid resolving Playwright fixtures for non-UI tests. We fetch
+    `context` only when the test is marked with `@pytest.mark.ui`.
+    """
     # Only apply to tests marked with @pytest.mark.ui
     if "ui" not in request.keywords:
         return
+    # Lazily resolve the Playwright context only for UI tests
+    context = request.getfixturevalue("context")
     block_ads_on_context(context)
 
 
