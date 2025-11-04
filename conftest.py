@@ -2,6 +2,7 @@
 import json
 import os
 from pathlib import Path
+from typing import Any, Dict
 
 import pytest
 
@@ -41,19 +42,101 @@ def profile_name(pytestconfig: pytest.Config, test_users: dict) -> str:
     return profile
 
 
+class _MaskedStr(str):
+    """String type that preserves value but masks its repr for safe logging."""
+
+    def __new__(cls, value: str, masked: str) -> "_MaskedStr":  # type: ignore[override]
+        obj = str.__new__(cls, value)  # type: ignore[misc]
+        obj._masked = masked  # type: ignore[attr-defined]
+        return obj
+
+    def __repr__(self) -> str:  # pragma: no cover - small utility
+        # Use repr of the masked variant so quotes/escapes are consistent
+        masked = getattr(self, "_masked", "***")  # type: ignore[attr-defined]
+        return repr(masked)
+
+
+def _mask_email(value: str) -> str:
+    try:
+        name, domain = value.split("@", 1)
+    except ValueError:
+        return "***"
+    visible = name[:1] if name else ""
+    return f"{visible}***@{domain}"
+
+
+def _mask_card(value: str) -> str:
+    digits = "".join(ch for ch in value if ch.isdigit())
+    tail = digits[-4:] if len(digits) >= 4 else "****"
+    return f"**** **** **** {tail}"
+
+
+_SENSITIVE_KEYS = {
+    "password",
+    "email",
+    "token",
+    "auth_token",
+    "x-auth-token",
+    "authorization",
+    "card_number",
+    "cvc",
+    "api_key",
+    "apikey",
+    "client_secret",
+    "secret",
+}
+
+
+def _redact_in_repr(data: Any, parent_key: str | None = None) -> Any:
+    """Recursively wrap sensitive string values so their repr is masked.
+
+    The underlying value remains intact (useful for UI/API calls), but pytest's
+    failure output and any accidental prints won't expose secrets.
+    """
+    if isinstance(data, dict):
+        redacted: Dict[Any, Any] = {}
+        for k, v in data.items():
+            redacted[k] = _redact_in_repr(v, str(k).lower())
+        return redacted
+    if isinstance(data, list):
+        return [_redact_in_repr(v, parent_key) for v in data]
+    if isinstance(data, str):
+        key = (parent_key or "").lower().replace("-", "_")
+        if key in _SENSITIVE_KEYS:
+            masked: str
+            if "email" in key:
+                masked = _mask_email(data)
+            elif "card" in key:
+                masked = _mask_card(data)
+            elif key in {"cvc"}:
+                masked = "***"
+            else:
+                masked = "***"
+            return _MaskedStr(data, masked)
+        return data
+    return data
+
+
 @pytest.fixture(scope="session")
 def test_users() -> dict:
-    """Load test user credentials from an env var or JSON fixture."""
+    """Load test user credentials and ensure secrets are redacted in logs.
+
+    Sources:
+    - Env var TEST_USERS_JSON (preferred for CI)
+    - Fallback JSON file at shared/test_data/test_users.json
+    """
     raw = os.getenv("TEST_USERS_JSON")
     if raw:
         try:
-            return json.loads(raw)
+            loaded = json.loads(raw)
         except json.JSONDecodeError as exc:
             raise ValueError("TEST_USERS_JSON secret is not valid JSON.") from exc
+        return _redact_in_repr(loaded)
 
     if TEST_USERS_FILE.is_file():
         with TEST_USERS_FILE.open() as f:
-            return json.load(f)
+            loaded = json.load(f)
+        return _redact_in_repr(loaded)
 
     raise FileNotFoundError(
         "Test user credentials were not provided. Set the TEST_USERS_JSON env "
