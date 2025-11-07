@@ -2,12 +2,13 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Generator
 
 import pytest
 
 from playwright.sync_api import Page
 from shared.helpers.ad_blocker import handle_route
+from shared.helpers.db_logger import log_test_run, init_db
 
 
 @pytest.fixture
@@ -141,4 +142,38 @@ def test_users() -> dict:
     raise FileNotFoundError(
         "Test user credentials were not provided. Set the TEST_USERS_JSON env "
         "variable or create shared/test_data/test_users.json."
+    )
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_sessionstart(session: pytest.Session) -> None:
+    init_db()
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(
+    item: pytest.Item, call: pytest.CallInfo
+) -> Generator[None, Any, None]:
+    """Capture test outcome and log to database."""
+    outcome: Any = yield
+    report = outcome.get_result()
+    if call.when != "call":
+        return
+
+    browser_option = item.config.getoption("browser", default="unknown")
+    if isinstance(browser_option, (list, tuple)):
+        browser = browser_option[0] if browser_option else "unknown"
+    elif isinstance(browser_option, str) and browser_option:
+        browser = browser_option
+    else:
+        browser = "unknown"
+
+    failure_message = str(report.longrepr) if report.failed else None
+
+    log_test_run(
+        nodeid=item.nodeid,
+        outcome=report.outcome,
+        browser=browser,
+        failure_message=failure_message,
+        test_name=item.name,
     )
