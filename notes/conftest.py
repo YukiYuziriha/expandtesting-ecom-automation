@@ -30,8 +30,19 @@ _test_note_ids: set[str] = set()
 
 # --- pytest-playwright plugin fixtures ---
 @pytest.fixture(scope="function")
-def browser_context_args(browser_context_args, notes_auth_state: Path, request):
-    """Inject storage_state into plugin-managed browser context for UI tests only."""
+def browser_context_args(
+    browser_context_args,
+    notes_auth_state: Path,
+    request: pytest.FixtureRequest,
+    browser: Browser,
+    test_users: dict,
+    profile_name: str,
+):
+    """Inject storage_state into plugin-managed browser context for UI tests only.
+
+    If the storage state file doesn't exist (e.g., deleted by cleanup), recreate it
+    before Playwright tries to use it.
+    """
     # Only apply to tests marked with @pytest.mark.ui
     if "ui" not in request.keywords and "hybrid" not in request.keywords:
         return browser_context_args
@@ -40,7 +51,17 @@ def browser_context_args(browser_context_args, notes_auth_state: Path, request):
     if "no_auth" in request.keywords:
         return browser_context_args
 
-    return {**browser_context_args, "storage_state": str(notes_auth_state)}
+    storage_path = notes_auth_state
+    # Recreate storage state if it was deleted (e.g., by notes_session_invalidator_cleanup)
+    if not storage_path.exists():
+        lock = FileLock(storage_path.with_suffix(".lock"))
+        with lock:
+            # Double-check after acquiring lock (another worker might have created it)
+            if not storage_path.exists():
+                user = test_users[profile_name]
+                _create_storage_state(browser, storage_path, user)
+
+    return {**browser_context_args, "storage_state": str(storage_path)}
 
 
 @pytest.fixture(autouse=True)
