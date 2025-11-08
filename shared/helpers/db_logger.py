@@ -29,7 +29,7 @@ def log_test_run(
     browser: str,
     failure_message: str | None = None,
     test_name: str | None = None,
-    duration_ms: int | None = None
+    duration_ms: int | None = None,
 ) -> None:
     with sqlite3.connect(DB_PATH) as conn:
         max_attempts = 3
@@ -48,7 +48,7 @@ def log_test_run(
                 conn.commit()
                 break
             except sqlite3.OperationalError as e:
-                if "database is locked" in str(e) and attempt < max_attempts -1:
+                if "database is locked" in str(e) and attempt < max_attempts - 1:
                     time.sleep(delay)
                     continue
                 else:
