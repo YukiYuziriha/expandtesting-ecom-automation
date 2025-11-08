@@ -1,5 +1,6 @@
 import sqlite3
 import pathlib
+import time
 
 DB_PATH = pathlib.Path("data/test_results.db")
 
@@ -14,8 +15,6 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nodeid TEXT,
                 outcome TEXT,
-                start_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                end_ts TIMESTAMP,
                 duration_ms INTEGER,
                 browser TEXT,
                 failure_message TEXT,
@@ -30,18 +29,31 @@ def log_test_run(
     browser: str,
     failure_message: str | None = None,
     test_name: str | None = None,
+    duration_ms: int | None = None
 ) -> None:
     with sqlite3.connect(DB_PATH) as conn:
-        try:
-            conn.execute(
-                """
-                INSERT INTO test_runs (
-                    nodeid, outcome, browser, failure_message, test_name
-                    )
-                    VALUES (?, ?, ?, ?, ?)
-            """,
-                (nodeid, outcome, browser, failure_message, test_name),
-            )
-            conn.commit()
-        except sqlite3.Error as e:
-            print(f"Error logging test run: {e}")
+        max_attempts = 3
+        delay = 0.1
+        for attempt in range(max_attempts):
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO test_runs (
+                        nodeid, outcome, browser, failure_message, test_name, duration_ms
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                    (nodeid, outcome, browser, failure_message, test_name, duration_ms),
+                )
+                conn.commit()
+                break
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e) and attempt < max_attempts -1:
+                    time.sleep(delay)
+                    continue
+                else:
+                    print(f"Database error after {attempt + 1} attempts: {e}")
+                    break
+            except sqlite3.Error as e:
+                print(f"Non-retryable database error: {e}")
+                break

@@ -169,6 +169,7 @@ def pytest_runtest_makereport(
         browser = "unknown"
 
     failure_message = str(report.longrepr) if report.failed else None
+    duration_ms=int(report.duration * 1000) if report.duration else None
 
     log_test_run(
         nodeid=item.nodeid,
@@ -176,4 +177,5 @@ def pytest_runtest_makereport(
         browser=browser,
         failure_message=failure_message,
         test_name=item.name,
+        duration_ms=duration_ms
     )
