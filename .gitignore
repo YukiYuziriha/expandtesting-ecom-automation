@@ -28,3 +28,4 @@ bookstore/test_data/test_users.json
 **/test_users.json
 .pre-commit-cache/
 .beads/
+data/
