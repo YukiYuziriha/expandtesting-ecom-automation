@@ -54,5 +54,6 @@ class CheckoutPage(BasePage):
         self.card_expiry_year_input.fill(str(exp_year))
         self.card_cvc_input.fill(cvc)
 
+        self.page.wait_for_function("typeof Stripe !== 'undefined'")
         # Submit form
         self.purchase_button.click()
