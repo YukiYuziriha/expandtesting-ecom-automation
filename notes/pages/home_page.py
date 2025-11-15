@@ -106,20 +106,33 @@ class HomePage(BasePage):
         completed: bool = False,
     ) -> None:
         """Edit the note whose card title matches ``title``."""
-        target_card = self.get_note_by_title(title)
-        target_card.wait_for(state="visible")
+        modal_opened = False
+        last_timeout: PlaywrightTimeoutError | None = None
 
-        edit_button = target_card.get_by_test_id("note-edit")
-        edit_button.wait_for(state="visible")
-        edit_button.click()
+        # Retry once in case the DOM re-renders and swallows the first click
+        for _ in range(2):
+            target_card = self.get_note_by_title(title)
+            target_card.wait_for(state="visible")
 
-        # Wait for the edit modal to be visible
-        # Use explicit timeout to match delete_note robustness
-        self.note_category.wait_for(state="visible", timeout=10000)
-        self.note_title.wait_for(state="visible", timeout=10000)
-        self.note_description.wait_for(state="visible", timeout=10000)
-        self.note_completed.wait_for(state="visible", timeout=10000)
-        self.note_submit.wait_for(state="visible", timeout=10000)
+            edit_button = target_card.get_by_test_id("note-edit")
+            self._ensure_button_actionable(edit_button, timeout=5000)
+            edit_button.click()
+
+            try:
+                self._wait_for_note_form_fields(timeout=10000)
+            except PlaywrightTimeoutError as exc:
+                last_timeout = exc
+                continue
+
+            modal_opened = True
+            break
+
+        if not modal_opened:
+            raise (
+                last_timeout
+                if last_timeout
+                else PlaywrightTimeoutError("Note edit modal did not become visible.")
+            )
 
         # Fill the form
         self.note_category.select_option(new_category)
@@ -160,3 +173,28 @@ class HomePage(BasePage):
             except Exception:
                 pass
         return titles
+
+    def _ensure_button_actionable(self, button: Locator, timeout: int = 5000) -> None:
+        """
+        Ensure a button can be interacted with before clicking.
+
+        - Waits for attachment and visibility
+        - Scrolls into view to avoid overlay obstructions
+        - Verifies the button is enabled
+        """
+        button.wait_for(state="attached", timeout=timeout)
+        button.wait_for(state="visible", timeout=timeout)
+        button.scroll_into_view_if_needed()
+
+        if not button.is_enabled():
+            raise PlaywrightTimeoutError(
+                "Target button is disabled and cannot be clicked."
+            )
+
+    def _wait_for_note_form_fields(self, timeout: int = 10000) -> None:
+        """Wait for all note form fields to become visible inside the modal."""
+        self.note_category.wait_for(state="visible", timeout=timeout)
+        self.note_title.wait_for(state="visible", timeout=timeout)
+        self.note_description.wait_for(state="visible", timeout=timeout)
+        self.note_completed.wait_for(state="visible", timeout=timeout)
+        self.note_submit.wait_for(state="visible", timeout=timeout)
