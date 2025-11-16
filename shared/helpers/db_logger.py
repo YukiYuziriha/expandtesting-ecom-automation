@@ -1,8 +1,19 @@
-import sqlite3
+import os
 import pathlib
+import sqlite3
 import time
 
-DB_PATH = pathlib.Path("data/test_results.db")
+DEFAULT_DB_PATH = pathlib.Path("data/test_results.db")
+
+
+def _resolve_db_path() -> pathlib.Path:
+    env_path = os.getenv("TEST_DB_PATH")
+    if env_path:
+        return pathlib.Path(env_path).expanduser()
+    return DEFAULT_DB_PATH
+
+
+DB_PATH = _resolve_db_path()
 
 
 def init_db():
