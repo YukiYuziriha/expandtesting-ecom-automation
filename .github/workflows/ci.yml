@@ -55,6 +55,9 @@ jobs:
       - name: Type check
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
 
+      - name: Prepare SQLite observability
+        run: scripts/ci/sqlite_observability.sh prep
+
       - name: Run bookstore E2E tests in parallel
         run: |
           pytest bookstore/tests/ -v \
@@ -63,6 +66,23 @@ jobs:
             --video on --tracing on \
             -n auto \
             --randomly-seed=${{ github.run_number }}
+
+      - name: Verify SQLite observability
+        if: always()
+        run: scripts/ci/sqlite_observability.sh verify
+
+      - name: Collect SQLite observability artifact
+        if: failure()
+        run: scripts/ci/sqlite_observability.sh collect observability-artifacts
+
+      - name: Upload SQLite observability artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite-observability-test-bookstore-${{ matrix.browser }}
+          path: observability-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Collect artifacts (bookstore)
         if: failure()
@@ -131,6 +151,9 @@ jobs:
       - name: Type check
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
 
+      - name: Prepare SQLite observability
+        run: scripts/ci/sqlite_observability.sh prep
+
       - name: Run notes UI tests (parallel)
         run: |
           mkdir -p test-results videos screenshots
@@ -141,6 +164,23 @@ jobs:
             --video on --tracing on \
             -n auto \
             --randomly-seed=${{ github.run_number }}
+
+      - name: Verify SQLite observability
+        if: always()
+        run: scripts/ci/sqlite_observability.sh verify
+
+      - name: Collect SQLite observability artifact
+        if: failure()
+        run: scripts/ci/sqlite_observability.sh collect observability-artifacts
+
+      - name: Upload SQLite observability artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite-observability-test-notes-parallel-${{ matrix.browser }}
+          path: observability-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
 
       # Collect artifacts from parallel tests
       - name: Collect parallel test artifacts
@@ -215,6 +255,9 @@ jobs:
       - name: Type check
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
 
+      - name: Prepare SQLite observability
+        run: scripts/ci/sqlite_observability.sh prep
+
       - name: Run notes sequential tests (${{ matrix.browser }})
         run: |
           mkdir -p test-results
@@ -224,6 +267,23 @@ jobs:
             --browser ${{ matrix.browser }} \
             --video on --tracing on \
             --randomly-seed=${{ github.run_number }}
+
+      - name: Verify SQLite observability
+        if: always()
+        run: scripts/ci/sqlite_observability.sh verify
+
+      - name: Collect SQLite observability artifact
+        if: failure()
+        run: scripts/ci/sqlite_observability.sh collect observability-artifacts
+
+      - name: Upload SQLite observability artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite-observability-test-notes-seq-${{ matrix.browser }}
+          path: observability-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Collect sequential test artifacts (${{ matrix.browser }})
         if: failure()
@@ -276,11 +336,31 @@ jobs:
       - name: Type check
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases notes/tests/api/
 
+      - name: Prepare SQLite observability
+        run: scripts/ci/sqlite_observability.sh prep
+
       - name: Run notes API tests (full)
         run: |
           pytest notes/tests/api/ -v \
             -m "not quarantine" \
             --randomly-seed=${{ github.run_number }}
+
+      - name: Verify SQLite observability
+        if: always()
+        run: scripts/ci/sqlite_observability.sh verify
+
+      - name: Collect SQLite observability artifact
+        if: failure()
+        run: scripts/ci/sqlite_observability.sh collect observability-artifacts
+
+      - name: Upload SQLite observability artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite-observability-test-notes-api
+          path: observability-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload failure artifacts (notes-api)
         if: failure()
@@ -340,6 +420,9 @@ jobs:
       - name: Type check (hybrid only)
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases notes/tests/hybrid/
 
+      - name: Prepare SQLite observability
+        run: scripts/ci/sqlite_observability.sh prep
+
       - name: Run notes Hybrid UI+API tests
         run: |
           mkdir -p test-results
@@ -349,6 +432,23 @@ jobs:
             --browser ${{ matrix.browser }} \
             --video on --tracing on \
             --randomly-seed=${{ github.run_number }}
+
+      - name: Verify SQLite observability
+        if: always()
+        run: scripts/ci/sqlite_observability.sh verify
+
+      - name: Collect SQLite observability artifact
+        if: failure()
+        run: scripts/ci/sqlite_observability.sh collect observability-artifacts
+
+      - name: Upload SQLite observability artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite-observability-test-notes-hybrid-${{ matrix.browser }}
+          path: observability-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload failure artifacts (hybrid)
         if: failure()
@@ -405,6 +505,9 @@ jobs:
       - name: Type check
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
 
+      - name: Prepare SQLite observability
+        run: scripts/ci/sqlite_observability.sh prep
+
       - name: Run bookstore UI smoke (push)
         run: |
           mkdir -p test-results
@@ -414,6 +517,23 @@ jobs:
             --video on --tracing on \
             -n auto \
             --randomly-seed=${{ github.run_number }}
+
+      - name: Verify SQLite observability
+        if: always()
+        run: scripts/ci/sqlite_observability.sh verify
+
+      - name: Collect SQLite observability artifact
+        if: failure()
+        run: scripts/ci/sqlite_observability.sh collect observability-artifacts
+
+      - name: Upload SQLite observability artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite-observability-push-bookstore-smoke
+          path: observability-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Collect artifacts (push bookstore)
         if: failure()
@@ -478,6 +598,9 @@ jobs:
       - name: Type check
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases .
 
+      - name: Prepare SQLite observability
+        run: scripts/ci/sqlite_observability.sh prep
+
       - name: Run notes UI smoke (push)
         run: |
           mkdir -p test-results
@@ -487,6 +610,23 @@ jobs:
             --video on --tracing on \
             -n auto \
             --randomly-seed=${{ github.run_number }}
+
+      - name: Verify SQLite observability
+        if: always()
+        run: scripts/ci/sqlite_observability.sh verify
+
+      - name: Collect SQLite observability artifact
+        if: failure()
+        run: scripts/ci/sqlite_observability.sh collect observability-artifacts
+
+      - name: Upload SQLite observability artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite-observability-push-notes-smoke-ui
+          path: observability-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Collect artifacts (push notes ui)
         if: failure()
@@ -538,12 +678,32 @@ jobs:
       - name: Type check (notes api)
         run: mypy --check-untyped-defs --ignore-missing-imports --explicit-package-bases notes/tests/api/
 
+      - name: Prepare SQLite observability
+        run: scripts/ci/sqlite_observability.sh prep
+
       - name: Run notes API smoke (push)
         run: |
           mkdir -p test-results
           pytest notes/tests/api/ -v \
             -m "smoke and not quarantine" \
             --randomly-seed=${{ github.run_number }}
+
+      - name: Verify SQLite observability
+        if: always()
+        run: scripts/ci/sqlite_observability.sh verify
+
+      - name: Collect SQLite observability artifact
+        if: failure()
+        run: scripts/ci/sqlite_observability.sh collect observability-artifacts
+
+      - name: Upload SQLite observability artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite-observability-push-notes-smoke-api
+          path: observability-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload failure artifacts (push notes api)
         if: failure()
