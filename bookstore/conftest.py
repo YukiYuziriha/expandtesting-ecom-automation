@@ -31,7 +31,7 @@ def auth_file(browser: Browser, test_users: dict, profile_name: str) -> Path:
         login_page = LoginPage(page)
         login_page.load()
         login_page.login(user["email"], user["password"])
-        page.wait_for_url("**/profile", timeout=10_000)
+        page.wait_for_url("**/profile", timeout=15_000)
         page.context.storage_state(path=auth_path)
         page.close()
 

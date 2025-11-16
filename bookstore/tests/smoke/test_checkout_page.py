@@ -36,13 +36,12 @@ def test_checkout_smoke(
     checkout_page.fill_and_submit(
         name=user["billing"]["name"],
         address=user["billing"]["address"],
-        card_name="Test Cardholder",
+        card_name=user["billing"]["name"],
         card_number=user["payment"]["card_number"],
         exp_month=user["payment"]["exp_month"],
         exp_year=user["payment"]["exp_year"],
         cvc=user["payment"]["cvc"],
     )
-
     # Wait for navigation to profile page
     expect(page).to_have_url(re.compile(f".*{ProfilePage.URL}"), timeout=10_000)
 
