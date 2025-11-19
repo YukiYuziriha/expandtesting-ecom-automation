@@ -1,6 +1,7 @@
 # conftest.py
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any, Dict, Generator
 
@@ -145,6 +146,9 @@ def test_users() -> dict:
     )
 
 
+# --- DB-logging -------------------------------------------------
+
+
 @pytest.hookimpl(tryfirst=True)
 def pytest_sessionstart(session: pytest.Session) -> None:
     init_db()
@@ -168,6 +172,7 @@ def pytest_runtest_makereport(
     else:
         browser = "unknown"
 
+    start_ts = int(time.time())
     failure_message = str(report.longrepr) if report.failed else None
     duration_ms = int(report.duration * 1000) if report.duration else None
 
@@ -177,5 +182,6 @@ def pytest_runtest_makereport(
         browser=browser,
         failure_message=failure_message,
         test_name=item.name,
+        start_ts=start_ts,
         duration_ms=duration_ms,
     )

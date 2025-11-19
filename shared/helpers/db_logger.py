@@ -26,6 +26,7 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nodeid TEXT,
                 outcome TEXT,
+                start_ts INTEGER,
                 duration_ms INTEGER,
                 browser TEXT,
                 failure_message TEXT,
@@ -40,6 +41,7 @@ def log_test_run(
     browser: str,
     failure_message: str | None = None,
     test_name: str | None = None,
+    start_ts: int | None = None,
     duration_ms: int | None = None,
 ) -> None:
     with sqlite3.connect(DB_PATH) as conn:
@@ -50,11 +52,19 @@ def log_test_run(
                 conn.execute(
                     """
                     INSERT INTO test_runs (
-                        nodeid, outcome, browser, failure_message, test_name, duration_ms
+                        nodeid, outcome, browser, failure_message, test_name, start_ts, duration_ms
                         )
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                    (nodeid, outcome, browser, failure_message, test_name, duration_ms),
+                    (
+                        nodeid,
+                        outcome,
+                        browser,
+                        failure_message,
+                        test_name,
+                        start_ts,
+                        duration_ms,
+                    ),
                 )
                 conn.commit()
                 break
