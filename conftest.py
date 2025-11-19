@@ -174,6 +174,8 @@ def pytest_runtest_makereport(
 
     start_ts = int(time.time())
     failure_message = str(report.longrepr) if report.failed else None
+    if failure_message and len(failure_message) > 512:
+        failure_message = failure_message[:512]
     duration_ms = int(report.duration * 1000) if report.duration else None
 
     log_test_run(

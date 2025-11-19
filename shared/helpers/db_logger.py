@@ -34,6 +34,8 @@ def init_db():
             )
         """)
 
+    os.chmod(DB_PATH, 0o600)
+
 
 def log_test_run(
     nodeid: str,
