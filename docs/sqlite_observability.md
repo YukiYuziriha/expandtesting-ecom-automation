@@ -1,3 +1,39 @@
+## SQLite наблюдаемость — логирование прогонов тестов
+
+Проект записывает результат каждого pytest-теста в локальную базу SQLite, чтобы изучать падения, длительности и флейки как локально, так и в CI. Таблицы и хелперы лежат в `shared/helpers/db_logger.py`, хуки подключены из `conftest.py`.
+
+### Что сохраняется
+- Файл: уважает `TEST_DB_PATH` (например, `TEST_DB_PATH=/tmp/run123.db pytest ...`), иначе — `data/test_results.db`.
+- Таблица: `test_runs` (создается через `init_db()`).
+  - Колонки: `id`, `nodeid`, `test_name`, `browser`, `duration_ms`, `outcome`, `failure_message` (обрезка до 512 символов) и `start_ts`.
+- Запись происходит в `pytest_runtest_makereport` (только фаза `call`), поэтому подготовка/очистка не шумят.
+- `_redact_in_repr` (см. `conftest.py`) маскирует чувствительные данные до того, как они попадут в логи или БД.
+
+### Локальный воркфлоу
+1. **Подготовка БД**: `./scripts/ci/sqlite_observability.sh prep`
+2. **Запуск любого pytest** (хуки создадут схему при необходимости).
+3. **Проверка**: `./scripts/ci/sqlite_observability.sh verify`
+4. **Инспекция**: `sqlite3 data/test_results.db "SELECT test_name, outcome FROM test_runs ORDER BY id DESC LIMIT 10;"`.
+5. **Сбор** (опционально): `./scripts/ci/sqlite_observability.sh collect tmp/db-artifact`
+
+### CI-воркфлоу
+- Каждая джоба с pytest выполняет helper-скрипт трижды:
+  1. `prep` перед тестами для чистого состояния.
+  2. `verify` после тестов (под `if: always()`).
+  3. `collect` + `actions/upload-artifact` только при падении джобы.
+- Это гарантирует детерминированные файлы и небольшие артефакты; WAL/SHM копируются вместе с основной БД для целостности.
+
+### Права и долговечность
+- `init_db()` создает `data/`, таблицу, включает WAL и `busy_timeout`, устанавливает права `0o600` (только владелец).
+- CI удаляет БД в начале каждой джобы, поэтому нет состояния между запусками; для истории скачайте артефакт после красного билда.
+- Helper копирует WAL/SHM при сборе артефактов, чтобы база оставалась консистентной при офлайн-анализе.
+
+### Будущие расширения
+- Добавить метаданные (`failure_type`, `run_id`) для аналитики.
+- Сделать легковесные отчеты (например, частота падений по тестам) на основе артефактов SQLite или отправлять строки в долгоживущий хранилище после стабилизации схемы.
+
+---
+
 ## SQLite Observability — Test Execution Logging
 
 This project logs every pytest test-case outcome into a local SQLite database so we can inspect failures, durations, and flaky behaviour both locally and in CI. The tables and helpers live in `shared/helpers/db_logger.py`, and the hooks are wired from `conftest.py`.
